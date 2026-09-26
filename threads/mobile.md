@@ -1,28 +1,36 @@
 # Thread: iPhone & Android
 
-**Hook**
+**1/ (hook + link)**
 > "Just wipe the traces off my phone" doesn't work the way it does on a laptop, and the reason is good news for you.
 >
-> Here's what your phone keeps, and the one move that clears all of it:
+> Full writeup + laptop scripts: github.com/anthonyonazure/privacy-sweep
+>
+> Here's what your phone keeps and how to clear each by hand:
 
-**1/ Why there's no cleanup app for phones**
-> iOS and Android run every app in a sandbox and encrypt the whole device with a key tied to your passcode. No app can read another app's data or reach the system history. That's why phones are hard to extract from, and why a "wipe traces" app can't exist on a stock phone.
+**2/ Why there's no cleanup app for phones**
+> iOS and Android wall every app off from every other one and encrypt the whole device with a key tied to your passcode. No app can read another app's data or reach the system history. That's why phones are hard to pull data off of, and why a "wipe traces" app can't exist on a stock phone.
 
-**2/ What your phone still keeps**
-> Deleted photos (kept ~30 days in a Recently Deleted / Trash album), browser history and cookies, message threads, keyboard-learned words, location history, and per-app caches.
+**3/ iPhone: deleted photos & Safari**
+> Photos > Albums > Recently Deleted > Select > Delete All (they sit there 30 days).
+> Settings > Apps > Safari > Clear History and Website Data.
 
-**3/ iPhone: clear them in Settings**
-> Photos > Recently Deleted > Delete All. Safari > Clear History and Website Data. Significant Locations > Clear History. Reset Keyboard Dictionary. Each lives under Settings.
+**4/ iPhone: location, Siri, keyboard**
+> Settings > Privacy & Security > Location Services > System Services > Significant Locations > Clear History.
+> Settings > Apps > Siri > Siri & Dictation History > Delete.
+> Settings > General > Transfer or Reset > Reset > Reset Keyboard Dictionary.
 
-**4/ Android: clear them in Settings**
-> Google Photos > Trash > empty. Chrome > Delete browsing data. Per-app: Settings > Apps > (app) > Clear cache. Delete the Ad ID under Privacy.
+**5/ Android: photos, browser, caches**
+> Google Photos > Library > Trash > empty.
+> Chrome > three dots > Delete browsing data > All time.
+> Per app: Settings > Apps > (app) > Storage & cache > Clear cache.
 
-**5/ The one move that clears everything**
+**6/ Android: location & ad tracking**
+> Google Maps > your photo > Your Timeline > settings > delete history.
+> Settings > Privacy/Security > Ads > Delete advertising ID.
+
+**7/ The one move that clears everything**
 > Before selling or handing on the phone: factory reset (Erase All Content and Settings on iOS, Erase all data on Android). Because storage is encrypted, the reset throws away the key and makes the whole contents unrecoverable at once.
 
-**6/ The everyday protection**
-> A strong lock screen IS the encryption key. A 6+ digit PIN or passphrase, with auto-lock on, protects every store above whenever the phone is locked. That's the real control.
-
-**7/ Full writeup + laptop scripts**
-> The phone steps in detail, plus open-source cleanup scripts for Mac, Windows and Linux:
-> github.com/anthonyonazure/privacy-sweep
+**8/ The everyday protection**
+> A strong lock screen IS the encryption key. A 6+ digit PIN or a passphrase, with auto-lock on, protects every store above whenever the phone is locked. That's the real control.
+> Laptop scripts + the detailed phone steps: github.com/anthonyonazure/privacy-sweep

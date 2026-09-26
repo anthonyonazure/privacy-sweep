@@ -20,6 +20,23 @@ see exactly what each script does before you run it.
 **Use it only on devices you own or are authorized to administer.** Don't use it to destroy records
 you have a legal duty to keep, or on machines that aren't yours.
 
+## Quick start: one command for your OS
+
+There's a top-level launcher that detects your operating system and runs the right full sweep:
+
+```bash
+./privacy-sweep.sh --dry-run   # macOS or Linux: preview, delete nothing
+./privacy-sweep.sh             # ask before each step
+```
+
+```powershell
+.\privacy-sweep.ps1 -DryRun    # Windows (run Terminal as Administrator): preview
+```
+
+Or go into a platform folder and run a single store's script on its own. Please read
+[/Users/anthony/Projects/privacy-sweep/SECURITY.md](SECURITY.md) first: it's short, and it draws the
+line between privacy hygiene (fine) and destroying records you have a duty to keep (not fine).
+
 ## How the scripts behave
 
 Every script follows the same three-mode pattern so nothing is deleted by surprise:
