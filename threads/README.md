@@ -9,8 +9,11 @@ back to the repo. Plain text, no em dashes, sized for X.
 - [/Users/anthony/Projects/privacy-sweep/threads/ios.md](ios.md) - the iPhone thread
 - [/Users/anthony/Projects/privacy-sweep/threads/android.md](android.md) - the Android thread
 
-A visual, screenshot-ready version of the Mac thread is at
-[/Users/anthony/Projects/privacy-sweep/threads/macos-onepager.html](macos-onepager.html). Open it in
-any browser and screenshot the card.
+Visual, screenshot-ready cards (open in any browser and screenshot, or use the pre-rendered PNGs in
+[/Users/anthony/Projects/privacy-sweep/assets](../assets/)):
+
+- [/Users/anthony/Projects/privacy-sweep/threads/macos-onepager.html](macos-onepager.html)
+- [/Users/anthony/Projects/privacy-sweep/threads/ios-onepager.html](ios-onepager.html)
+- [/Users/anthony/Projects/privacy-sweep/threads/android-onepager.html](android-onepager.html)
 
 Before posting, swap `github.com/anthonyonazure/privacy-sweep` for the final repo URL if it differs.

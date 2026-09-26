@@ -10,6 +10,16 @@ fraction of them.
 device. One folder per operating system, one standalone script per store, so you can run just the
 one you want or the whole set.
 
+<p align="center">
+  <img src="assets/macos.png" alt="privacy-sweep macOS card: the history stores a Mac keeps and how to clear each one" width="420">
+</p>
+
+Screenshot-ready visual cards, one per platform:
+[/Users/anthony/Projects/privacy-sweep/assets/macos.png](assets/macos.png) ·
+[/Users/anthony/Projects/privacy-sweep/assets/ios.png](assets/ios.png) ·
+[/Users/anthony/Projects/privacy-sweep/assets/android.png](assets/android.png)
+(source HTML lives in [/Users/anthony/Projects/privacy-sweep/threads](threads/)).
+
 ## What this is for
 
 Everyday privacy hygiene: before you sell or donate a machine, after using a shared computer, or

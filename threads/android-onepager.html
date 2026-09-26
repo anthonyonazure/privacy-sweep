@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What Your Android Remembers</title>
+<meta name="description" content="A screenshot-ready privacy card: what an Android phone keeps about you and how to clear each one by hand.">
+<style>
+  :root{
+    --bg:#0b0e14; --card:#11151f; --edge:#1e2733; --ink:#d7e0ee; --dim:#8a97ab;
+    --accent:#5ad1a0; --accent2:#63b3ff; --warn:#f0b429; --rule:#212b38;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg:#eef1f6; --card:#ffffff; --edge:#d8dee8; --ink:#141a24; --dim:#5a6675;
+      --accent:#0f9d68; --accent2:#1f6feb; --warn:#b7791f; --rule:#e3e8f0;
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#eef1f6; --card:#ffffff; --edge:#d8dee8; --ink:#141a24; --dim:#5a6675;
+    --accent:#0f9d68; --accent2:#1f6feb; --warn:#b7791f; --rule:#e3e8f0;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:var(--bg); color:var(--ink); font-family:var(--mono); line-height:1.5;
+    padding:32px 16px; display:flex; justify-content:center; -webkit-font-smoothing:antialiased;}
+  .card{width:100%; max-width:680px; background:var(--card); border:1px solid var(--edge);
+    border-radius:14px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.35);}
+  .bar{display:flex; align-items:center; gap:8px; padding:12px 16px;
+    border-bottom:1px solid var(--rule); background:rgba(127,127,127,.06);}
+  .dot{width:11px;height:11px;border-radius:50%}.r{background:#ff5f57}.y{background:#febc2e}.g{background:#28c840}
+  .bar .path{margin-left:8px; color:var(--dim); font-size:12px}
+  .body{padding:22px 22px 8px}
+  h1{font-size:21px; margin:0 0 4px; letter-spacing:.2px}
+  h1 .cursor{color:var(--accent); font-weight:400}
+  .lede{color:var(--dim); font-size:13.5px; margin:0 0 14px}
+  .repo{display:inline-block; font-size:12.5px; color:var(--accent2); border:1px dashed var(--edge);
+    border-radius:8px; padding:6px 10px; margin-bottom:18px; word-break:break-all;}
+  .item{padding:12px 0; border-top:1px solid var(--rule)} .item:first-of-type{border-top:none}
+  .h{display:flex; gap:10px; align-items:baseline}
+  .n{color:var(--accent); font-weight:700; font-size:13px; min-width:20px}
+  .t{font-weight:700; font-size:14.5px}
+  .d{color:var(--dim); font-size:13px; margin:3px 0 0 30px}
+  .cmd{display:block; margin:7px 0 0 30px; padding:7px 10px; font-size:12.5px;
+    background:rgba(127,127,127,.10); border:1px solid var(--edge); border-radius:7px;
+    color:var(--ink); white-space:pre-wrap; word-break:break-word;}
+  .fix{margin:16px 0 6px; padding:14px 16px; border-radius:10px;
+    background:linear-gradient(90deg, rgba(90,209,160,.12), rgba(99,179,255,.08)); border:1px solid var(--edge);}
+  .fix .t{color:var(--accent)} .fix p{margin:4px 0 0; font-size:13px; color:var(--ink)}
+  .foot{padding:14px 22px 20px; border-top:1px solid var(--rule); margin-top:8px; color:var(--dim); font-size:11.5px;}
+  .foot b{color:var(--ink)}
+</style>
+</head>
+<body>
+  <main class="card">
+    <div class="bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="path">privacy-sweep — Android</span>
+    </div>
+    <div class="body">
+      <h1>What your Android remembers <span class="cursor">▍</span></h1>
+      <p class="lede">Less than you'd fear, because modern Android encrypts storage behind your lock screen. Here's what it keeps and how to clear each by hand.</p>
+      <span class="repo">github.com/anthonyonazure/privacy-sweep — full writeup + laptop scripts</span>
+
+      <div class="item">
+        <div class="h"><span class="n">01</span><span class="t">Why there's no cleanup app</span></div>
+        <div class="d">Every app is walled off from every other, and storage is encrypted with a key tied to your lock screen. No normal app can reach another's data or the protected databases.</div>
+      </div>
+
+      <div class="item">
+        <div class="h"><span class="n">02</span><span class="t">Deleted photos</span></div>
+        <div class="d">They sit in Trash up to 60 days. Google Photos › Library › Trash › empty.</div>
+      </div>
+
+      <div class="item">
+        <div class="h"><span class="n">03</span><span class="t">Browser history, cookies, cache</span></div>
+        <code class="cmd">Chrome › ⋮ › Delete browsing data › Time range: All time › tick all › Clear</code>
+      </div>
+
+      <div class="item">
+        <div class="h"><span class="n">04</span><span class="t">Per-app caches</span></div>
+        <div class="d">Apps stockpile thumbnails and downloads.</div>
+        <code class="cmd">Settings › Apps › (app) › Storage & cache › Clear cache</code>
+      </div>
+
+      <div class="item">
+        <div class="h"><span class="n">05</span><span class="t">Location &amp; ad tracking</span></div>
+        <div class="d">Maps › your photo › Your Timeline › settings › delete history. And Settings › Privacy › Ads › Delete advertising ID.</div>
+      </div>
+
+      <div class="fix">
+        <div class="h"><span class="n" style="color:var(--warn)">★</span><span class="t">The one move that clears everything</span></div>
+        <p>Settings › System › Reset options › Erase all data (factory reset). Because storage is encrypted, this throws away the key and makes the whole contents unrecoverable at once. A strong lock screen is what protects it all day to day.</p>
+      </div>
+    </div>
+    <div class="foot">
+      <b>Scope:</b> personal privacy hygiene on your own device. Not a list of everywhere a forensic examiner looks, and not a way to defeat an investigation.
+    </div>
+  </main>
+</body>
+</html>
