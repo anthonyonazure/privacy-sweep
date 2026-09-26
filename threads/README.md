@@ -6,6 +6,11 @@ back to the repo. Plain text, no em dashes, sized for X.
 - [/Users/anthony/Projects/privacy-sweep/threads/macos.md](macos.md) - the Mac thread
 - [/Users/anthony/Projects/privacy-sweep/threads/windows.md](windows.md) - the Windows thread
 - [/Users/anthony/Projects/privacy-sweep/threads/linux.md](linux.md) - the Linux thread
-- [/Users/anthony/Projects/privacy-sweep/threads/mobile.md](mobile.md) - the iPhone & Android thread
+- [/Users/anthony/Projects/privacy-sweep/threads/ios.md](ios.md) - the iPhone thread
+- [/Users/anthony/Projects/privacy-sweep/threads/android.md](android.md) - the Android thread
+
+A visual, screenshot-ready version of the Mac thread is at
+[/Users/anthony/Projects/privacy-sweep/threads/macos-onepager.html](macos-onepager.html). Open it in
+any browser and screenshot the card.
 
 Before posting, swap `github.com/anthonyonazure/privacy-sweep` for the final repo URL if it differs.

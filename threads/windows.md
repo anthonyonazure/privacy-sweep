@@ -12,12 +12,11 @@
 > Clear it: Win+R, `cleanmgr`, pick your C drive, tick Thumbnails, OK.
 
 **3/ Every program you've opened**
-> Win+R, `C:\Windows\Prefetch`. One .pf file per program, with its last launch times and total run count. (Windows keeps a second record called Amcache too.)
+> Win+R, `C:\Windows\Prefetch`. One .pf file per program, with its last launch times and total run count.
 > Clear it: delete the .pf files from an Administrator terminal. They rebuild over the next few launches.
 
-**4/ Every USB stick ever plugged in**
-> Win+R, `regedit`, go to `HKLM\SYSTEM\CurrentControlSet\Enum\USBSTOR`. Every drive that's touched the machine, by make and model.
-> This is woven into Windows; don't hand-edit it. If you care, reducing it is a Group Policy setting, not a delete.
+**4/ A note on scope**
+> This isn't every place a forensic examiner knows to look, and finding those places isn't the point of this thread. This is here for personal privacy hygiene on your own devices, clearing the everyday stuff the system quietly caches about you. It isn't a guide to defeating an investigation, and it isn't meant to be used as one.
 
 **5/ Saved Wi-Fi passwords in plain text**
 > Terminal: `netsh wlan show profiles`, then `netsh wlan show profile name="NETWORK" key=clear` and read the Key Content line.
