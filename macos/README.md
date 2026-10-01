@@ -36,7 +36,7 @@ Run everything without prompts:
 | Download log | Every file downloaded and the URL it came from | [clear-quarantine.sh](clear-quarantine.sh) | Deletes all rows from the QuarantineEventsV2 database |
 | Recent items | Recent documents, apps, servers, Open Recent menus | [clear-recent.sh](clear-recent.sh) | Removes the sharedfilelist files, restarts Finder and Dock |
 | Trash | Files you sent to the Trash | [clear-trash.sh](clear-trash.sh) | Empties `~/.Trash` |
-| Shell history | Every Terminal command you typed | [clear-shell-history.sh](clear-shell-history.sh) | Truncates the zsh/bash history files |
+| Shell history | Every Terminal command you typed | [clear-shell-history.sh](clear-shell-history.sh) | Truncates the zsh/bash history files, and Terminal's per-window copies in `~/.zsh_sessions` |
 | Clipboard | What you last copied, plus optional history | [clear-clipboard.sh](clear-clipboard.sh) | Empties the pasteboard |
 
 ## What these scripts deliberately do NOT touch

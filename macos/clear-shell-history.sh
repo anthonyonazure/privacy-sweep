@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # clear-shell-history.sh - part of privacy-sweep (macOS)
-# Clears your Terminal command history (zsh and bash) plus the current session.
+# Clears your Terminal command history (zsh and bash), including the second
+# copy that Terminal keeps per window in ~/.zsh_sessions.
 # Handy because commands can hold paths, hostnames, even secrets typed inline.
 # Modes: --dry-run (show only), (default) ask first, --yes (no prompt).
 set -euo pipefail
@@ -16,6 +17,10 @@ esac; done
 confirm() { $ASSUME_YES && return 0; read -r -p "Proceed? [y/N] " a; [[ "$a" =~ ^[Yy]$ ]]; }
 
 TARGETS=("$HOME/.zsh_history" "$HOME/.bash_history" "$HOME/.zhistory")
+# Terminal saves a per-window copy of the history here
+shopt -s nullglob
+TARGETS+=("$HOME"/.zsh_sessions/*.history "$HOME"/.zsh_sessions/*.historynew)
+shopt -u nullglob
 
 echo "== Shell command history =="
 FOUND=()

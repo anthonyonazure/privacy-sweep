@@ -28,4 +28,4 @@ confirm || { echo "Cancelled."; exit 0; }
 
 for f in "${FOUND[@]}"; do : > "$f"; done
 echo "Done. History files cleared."
-echo "This shell's in-memory history persists; run 'history -c' or open a new terminal."
+echo "This shell's in-memory history persists; run 'history -c' (bash) or 'history -p' (zsh), or open a new terminal."

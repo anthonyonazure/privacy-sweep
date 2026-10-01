@@ -65,7 +65,7 @@ of them require `sudo` unless the folder README says so explicitly.
 Chasing every cache by hand never fully wins, because the system rewrites them as you work. The one
 control that covers the entire list at once is **full-disk encryption**: FileVault on macOS,
 BitLocker on Windows, LUKS on Linux, and the on-by-default encryption on modern iOS and Android.
-When the device is off or locked, every one of these stores is unreadable without your password.
+When the device is shut down, every one of these stores is unreadable without your password.
 These scripts reduce what a *logged-in* session leaves lying around; encryption protects the disk
 itself.
 

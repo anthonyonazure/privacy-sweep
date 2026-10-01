@@ -40,6 +40,7 @@ Run everything with no prompts:
 | Temp files | Working files programs leave behind | [clear-temp.ps1](clear-temp.ps1) | Empties `%TEMP%` and (as admin) `C:\Windows\Temp` | Partial |
 | Recycle Bin | Deleted files awaiting purge | [clear-recyclebin.ps1](clear-recyclebin.ps1) | `Clear-RecycleBin -Force` | No |
 | Clipboard | What you copied, plus Win+V history | [clear-clipboard.ps1](clear-clipboard.ps1) | Empties clipboard; guides you to clear history | No |
+| PowerShell history | Every command you typed, kept across restarts | [clear-powershell-history.ps1](clear-powershell-history.ps1) | Empties the PSReadLine history files | No |
 
 ## What these scripts deliberately do NOT touch
 

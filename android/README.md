@@ -20,7 +20,7 @@ Two things are possible without rooting:
 | App cache | Thumbnails, downloaded content per app | Settings > Apps > (app) > Storage & cache > Clear cache |
 | Chrome / browser | History, cookies, cached pages | Chrome > (three dots) > Delete browsing data |
 | Downloads | Files you downloaded | Files app > Downloads > select > delete |
-| Photo trash | Deleted photos, kept ~30-60 days | Google Photos > Library > Trash > empty |
+| Photo trash | Deleted photos, kept ~30-60 days | Google Photos > Collections > Trash > Empty trash (Samsung: Gallery > Recycle bin) |
 | Gallery `.thumbnails` | Image preview cache on storage | Delete the `.thumbnails` folder in internal storage via the Files app |
 | Maps / Location history | Places you've been | Google Maps > your photo > Your Timeline > settings > delete |
 | Keyboard learned words | Typed personal words | Settings > System > Languages & input > (keyboard) > clear learned words / dictionary |

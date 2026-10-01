@@ -17,12 +17,12 @@ that actually move the needle.
 
 | Store | What it holds | How to clear it |
 | --- | --- | --- |
-| Recently Deleted (Photos) | Deleted photos, kept 30 days | Photos > Albums > Recently Deleted > Select > Delete All |
+| Recently Deleted (Photos) | Deleted photos, kept 30 days | Photos > Collections > Utilities > Recently Deleted > Select > Delete All |
 | Safari history & website data | Sites visited, cookies, caches | Settings > Apps > Safari > Clear History and Website Data |
 | Messages | Texts and attachments | Settings > Apps > Messages > Keep Messages > 30 Days (auto-deletes older), or delete threads |
 | Keyboard learned text | Typed words, some sensitive | Settings > General > Transfer or Reset iPhone > Reset > Reset Keyboard Dictionary |
 | Significant Locations | A log of places you frequent | Settings > Privacy & Security > Location Services > System Services > Significant Locations > Clear History |
-| Siri & Dictation history | Voice request history | Settings > Apps > Siri > Siri & Dictation History > Delete |
+| Siri & Dictation history | Voice request history | Settings > Siri (or Apple Intelligence & Siri) > Siri & Dictation History > Delete |
 | Analytics data | Diagnostic logs | Settings > Privacy & Security > Analytics & Improvements > turn off Share iPhone Analytics |
 | Per-app caches | Downloaded/cached content | Delete and reinstall the app, or use its in-app "clear cache" if it has one |
 

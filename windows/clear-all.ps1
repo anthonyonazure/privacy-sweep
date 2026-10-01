@@ -9,7 +9,7 @@
 param([switch]$DryRun, [switch]$Yes)
 
 $dir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$order = @('clear-thumbnails.ps1','clear-prefetch.ps1','clear-recent.ps1','clear-temp.ps1','clear-recyclebin.ps1','clear-clipboard.ps1')
+$order = @('clear-thumbnails.ps1','clear-prefetch.ps1','clear-recent.ps1','clear-temp.ps1','clear-recyclebin.ps1','clear-clipboard.ps1','clear-powershell-history.ps1')
 
 Write-Host "#############################################"
 Write-Host "# privacy-sweep - Windows - full run"

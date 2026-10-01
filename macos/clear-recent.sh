@@ -34,4 +34,4 @@ confirm || { echo "Cancelled."; exit 0; }
 find "$SFL" -type f \( -name "*.sfl*" -o -name "*.plist" \) -delete 2>/dev/null || true
 killall Finder Dock 2>/dev/null || true
 echo "Done. Recent-items lists cleared (Finder and Dock restarted)."
-echo "To stop new ones being kept: System Settings > Desktop & Dock > 'Recent documents...' > None."
+echo "To stop new ones being kept: System Settings > Menu Bar > 'Recent documents...' > None."
