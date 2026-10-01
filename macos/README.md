@@ -32,12 +32,12 @@ Run everything without prompts:
 
 | Store | What it remembers | Script | How it clears it |
 | --- | --- | --- | --- |
-| Quick Look cache | Thumbnail previews of files, including ones you deleted | [/Users/anthony/Projects/privacy-sweep/macos/clear-quicklook.sh](clear-quicklook.sh) | `qlmanage -r cache` |
-| Download log | Every file downloaded and the URL it came from | [/Users/anthony/Projects/privacy-sweep/macos/clear-quarantine.sh](clear-quarantine.sh) | Deletes all rows from the QuarantineEventsV2 database |
-| Recent items | Recent documents, apps, servers, Open Recent menus | [/Users/anthony/Projects/privacy-sweep/macos/clear-recent.sh](clear-recent.sh) | Removes the sharedfilelist files, restarts Finder and Dock |
-| Trash | Files you sent to the Trash | [/Users/anthony/Projects/privacy-sweep/macos/clear-trash.sh](clear-trash.sh) | Empties `~/.Trash` |
-| Shell history | Every Terminal command you typed | [/Users/anthony/Projects/privacy-sweep/macos/clear-shell-history.sh](clear-shell-history.sh) | Truncates the zsh/bash history files |
-| Clipboard | What you last copied, plus optional history | [/Users/anthony/Projects/privacy-sweep/macos/clear-clipboard.sh](clear-clipboard.sh) | Empties the pasteboard |
+| Quick Look cache | Thumbnail previews of files, including ones you deleted | [clear-quicklook.sh](clear-quicklook.sh) | `qlmanage -r cache` |
+| Download log | Every file downloaded and the URL it came from | [clear-quarantine.sh](clear-quarantine.sh) | Deletes all rows from the QuarantineEventsV2 database |
+| Recent items | Recent documents, apps, servers, Open Recent menus | [clear-recent.sh](clear-recent.sh) | Removes the sharedfilelist files, restarts Finder and Dock |
+| Trash | Files you sent to the Trash | [clear-trash.sh](clear-trash.sh) | Empties `~/.Trash` |
+| Shell history | Every Terminal command you typed | [clear-shell-history.sh](clear-shell-history.sh) | Truncates the zsh/bash history files |
+| Clipboard | What you last copied, plus optional history | [clear-clipboard.sh](clear-clipboard.sh) | Empties the pasteboard |
 
 ## What these scripts deliberately do NOT touch
 

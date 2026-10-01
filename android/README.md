@@ -9,7 +9,7 @@ Two things are possible without rooting:
 1. **Manual clears from Settings** (works on every phone) - the table below.
 2. **A helper script over `adb`** (Android Debug Bridge) for the handful of things Google exposes to
    a connected computer. It is included as
-   [/Users/anthony/Projects/privacy-sweep/android/clear-adb.sh](clear-adb.sh) and is intentionally
+   [clear-adb.sh](clear-adb.sh) and is intentionally
    modest, because Android only lets `adb` reach app caches and a few user-space bits, not the
    protected databases.
 

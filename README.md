@@ -34,7 +34,7 @@ There's a top-level launcher that detects your operating system and runs the rig
 ```
 
 Or go into a platform folder and run a single store's script on its own. Please read
-[/Users/anthony/Projects/privacy-sweep/SECURITY.md](SECURITY.md) first: it's short, and it draws the
+[SECURITY.md](SECURITY.md) first: it's short, and it draws the
 line between privacy hygiene (fine) and destroying records you have a duty to keep (not fine).
 
 ## How the scripts behave
@@ -54,11 +54,11 @@ of them require `sudo` unless the folder README says so explicitly.
 
 | Folder | Status | Notes |
 | --- | --- | --- |
-| [/Users/anthony/Projects/privacy-sweep/macos](macos/) | Scripts | Bash. Tested on macOS 26. |
-| [/Users/anthony/Projects/privacy-sweep/windows](windows/) | Scripts | PowerShell. Run in an elevated terminal for Prefetch. |
-| [/Users/anthony/Projects/privacy-sweep/linux](linux/) | Scripts | Bash. Works on GNOME/KDE desktops. |
-| [/Users/anthony/Projects/privacy-sweep/ios](ios/) | Guide | iOS is sandboxed and encrypted; no script can reach these. Manual steps only. |
-| [/Users/anthony/Projects/privacy-sweep/android](android/) | Guide + partial | Some clearing possible over `adb`; most is manual. |
+| [macos/](macos/) | Scripts | Bash. Tested on macOS 26. |
+| [windows/](windows/) | Scripts | PowerShell. Run in an elevated terminal for Prefetch. |
+| [linux/](linux/) | Scripts | Bash. Works on GNOME/KDE desktops. |
+| [ios/](ios/) | Guide | iOS is sandboxed and encrypted; no script can reach these. Manual steps only. |
+| [android/](android/) | Guide + partial | Some clearing possible over `adb`; most is manual. |
 
 ## The real fix: encryption at rest
 
@@ -71,5 +71,5 @@ itself.
 
 ## License
 
-MIT. See [/Users/anthony/Projects/privacy-sweep/LICENSE](LICENSE). No warranty. You are responsible
+MIT. See [LICENSE](LICENSE). No warranty. You are responsible
 for what you delete.

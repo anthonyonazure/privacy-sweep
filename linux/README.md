@@ -32,12 +32,12 @@ No prompts:
 
 | Store | What it remembers | Script | How it clears it |
 | --- | --- | --- | --- |
-| Thumbnail cache | Image previews, including of deleted files | [/Users/anthony/Projects/privacy-sweep/linux/clear-thumbnails.sh](clear-thumbnails.sh) | Empties `~/.cache/thumbnails` |
-| Recently used | Documents you opened | [/Users/anthony/Projects/privacy-sweep/linux/clear-recent.sh](clear-recent.sh) | Clears `recently-used.xbel` |
-| Trash | Files you deleted | [/Users/anthony/Projects/privacy-sweep/linux/clear-trash.sh](clear-trash.sh) | Empties `~/.local/share/Trash` |
-| Shell history | Commands you typed | [/Users/anthony/Projects/privacy-sweep/linux/clear-shell-history.sh](clear-shell-history.sh) | Truncates bash/zsh/vim/less/python history |
-| Your temp files | Leftover working files | [/Users/anthony/Projects/privacy-sweep/linux/clear-temp.sh](clear-temp.sh) | Removes files you own in `/tmp` and `/var/tmp` |
-| System logs | Logins, crashes, daemon activity | [/Users/anthony/Projects/privacy-sweep/linux/clear-logs.sh](clear-logs.sh) | **Admin, opt-in.** Vacuums the journal, truncates `/var/log/*.log` |
+| Thumbnail cache | Image previews, including of deleted files | [clear-thumbnails.sh](clear-thumbnails.sh) | Empties `~/.cache/thumbnails` |
+| Recently used | Documents you opened | [clear-recent.sh](clear-recent.sh) | Clears `recently-used.xbel` |
+| Trash | Files you deleted | [clear-trash.sh](clear-trash.sh) | Empties `~/.local/share/Trash` |
+| Shell history | Commands you typed | [clear-shell-history.sh](clear-shell-history.sh) | Truncates bash/zsh/vim/less/python history |
+| Your temp files | Leftover working files | [clear-temp.sh](clear-temp.sh) | Removes files you own in `/tmp` and `/var/tmp` |
+| System logs | Logins, crashes, daemon activity | [clear-logs.sh](clear-logs.sh) | **Admin, opt-in.** Vacuums the journal, truncates `/var/log/*.log` |
 
 ## Why `clear-logs.sh` is separate
 

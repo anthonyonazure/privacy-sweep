@@ -34,12 +34,12 @@ Run everything with no prompts:
 
 | Store | What it remembers | Script | How it clears it | Admin? |
 | --- | --- | --- | --- | --- |
-| Thumbnail & icon cache | Previews of files, including deleted photos | [/Users/anthony/Projects/privacy-sweep/windows/clear-thumbnails.ps1](clear-thumbnails.ps1) | Deletes `thumbcache_*.db` / `iconcache_*.db` (restarts Explorer) | No |
-| Prefetch | Every program run, with times and counts | [/Users/anthony/Projects/privacy-sweep/windows/clear-prefetch.ps1](clear-prefetch.ps1) | Deletes `C:\Windows\Prefetch\*.pf` | Yes |
-| Recent & Jump Lists | Files you opened, per-app recent menus | [/Users/anthony/Projects/privacy-sweep/windows/clear-recent.ps1](clear-recent.ps1) | Clears `%APPDATA%\Microsoft\Windows\Recent` | No |
-| Temp files | Working files programs leave behind | [/Users/anthony/Projects/privacy-sweep/windows/clear-temp.ps1](clear-temp.ps1) | Empties `%TEMP%` and (as admin) `C:\Windows\Temp` | Partial |
-| Recycle Bin | Deleted files awaiting purge | [/Users/anthony/Projects/privacy-sweep/windows/clear-recyclebin.ps1](clear-recyclebin.ps1) | `Clear-RecycleBin -Force` | No |
-| Clipboard | What you copied, plus Win+V history | [/Users/anthony/Projects/privacy-sweep/windows/clear-clipboard.ps1](clear-clipboard.ps1) | Empties clipboard; guides you to clear history | No |
+| Thumbnail & icon cache | Previews of files, including deleted photos | [clear-thumbnails.ps1](clear-thumbnails.ps1) | Deletes `thumbcache_*.db` / `iconcache_*.db` (restarts Explorer) | No |
+| Prefetch | Every program run, with times and counts | [clear-prefetch.ps1](clear-prefetch.ps1) | Deletes `C:\Windows\Prefetch\*.pf` | Yes |
+| Recent & Jump Lists | Files you opened, per-app recent menus | [clear-recent.ps1](clear-recent.ps1) | Clears `%APPDATA%\Microsoft\Windows\Recent` | No |
+| Temp files | Working files programs leave behind | [clear-temp.ps1](clear-temp.ps1) | Empties `%TEMP%` and (as admin) `C:\Windows\Temp` | Partial |
+| Recycle Bin | Deleted files awaiting purge | [clear-recyclebin.ps1](clear-recyclebin.ps1) | `Clear-RecycleBin -Force` | No |
+| Clipboard | What you copied, plus Win+V history | [clear-clipboard.ps1](clear-clipboard.ps1) | Empties clipboard; guides you to clear history | No |
 
 ## What these scripts deliberately do NOT touch
 
