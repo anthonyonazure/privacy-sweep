@@ -216,6 +216,19 @@ if ($ClearEventLogs) {
   Write-Host "Messages are not printed."
   $channels = @('Application', 'System', 'Security')
   foreach ($channel in $channels) {
+    $records = 'unavailable'
+    $bytes = 'unavailable'
+    try {
+      $log = Get-WinEvent -ListLog $channel -ErrorAction Stop
+      if ($log) {
+        if ($null -ne $log.RecordCount) { $records = $log.RecordCount }
+        if ($null -ne $log.FileSize) { $bytes = $log.FileSize }
+      }
+    } catch {
+      $records = 'unavailable'
+      $bytes = 'unavailable'
+    }
+    Write-Host "Channel: $channel  Records: $records  FileSize: $bytes"
     Write-Host "Would run: wevtutil cl $channel"
   }
   if (Test-WillApply) {
@@ -245,8 +258,9 @@ if ($ClearEventLogs) {
   Write-Host ""
 }
 if ($ResetSearchIndex) {
-  Write-Host "-- Windows Search index --"
+  Write-Host "-- Windows Search index rebuild plan --"
   Write-Host "WARNING: deleting Windows.edb / Windows.db drops the full-text index. Windows rebuilds it by reading files again."
+  Write-Host "Plan: removing Windows.edb or Windows.db is what causes Windows to rebuild the index."
   $search = $null
   if ($env:ProgramData) { $search = Join-Path $env:ProgramData 'Microsoft\Search\Data\Applications\Windows' }
   if ($env:PRIVACY_SWEEP_HOME_ROOT) { $search = Join-Path $homeRoot 'Search' }

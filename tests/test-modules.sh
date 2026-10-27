@@ -74,6 +74,11 @@ win_out="$(pwsh -NoProfile -NonInteractive -File "$ROOT/privacy-sweep.ps1" -AllM
 [[ "$win_status" -eq 0 ]] || fail "windows -AllModules exited $win_status: $win_out"
 printf '%s\n' "$win_out" | grep -q "forces a dry run" || fail "windows -AllModules did not force a dry run"
 printf '%s\n' "$win_out" | grep -q "Dry run of every module finished" || fail "windows all-modules did not finish"
+printf '%s\n' "$win_out" | grep -q "Channel: Application" || fail "event-log plan did not report channel size: $win_out"
+printf '%s\n' "$win_out" | grep -q "Would run: wevtutil cl Application" || fail "event-log plan was not wired: $win_out"
+printf '%s\n' "$win_out" | grep -q "Windows Search index rebuild plan" || fail "search-index plan was not wired: $win_out"
+printf '%s\n' "$win_out" | grep -q "Windows.edb" || fail "search rebuild plan did not name Windows.edb: $win_out"
+printf '%s\n' "$win_out" | grep -q "Not installed" || fail "windows all-modules did not say when a browser is missing: $win_out"
 
 echo "== module fixtures =="
 export PATH="$ROOT/tests/fakebin:$PATH"
@@ -95,6 +100,12 @@ vss_out="$(PRIVACY_SWEEP_RECOVERY_ROOT="$wfix" pwsh -NoProfile -NonInteractive -
 printf '%s\n' "$vss_out" | grep -q "Would run: vssadmin delete shadows /all /quiet" || printf '%s\n' "$vss_out" | grep -q "vssadmin was not found" \
   || fail "vss dry-run did not plan or explain: $vss_out"
 printf '%s\n' "$vss_out" | grep -q "Dry run: nothing was deleted." || fail "vss dry-run deleted or said it did"
+printf '%s\n' "$vss_out" | grep -q "Shadow copies:" || fail "vss preview did not summarize a count: $vss_out"
+printf '%s\n' "$vss_out" | grep -q "Created:" || fail "vss preview did not summarize a creation date: $vss_out"
+printf '%s\n' "$vss_out" | grep -q "1.5 GB" || fail "vss preview did not summarize storage: $vss_out"
+if printf '%s\n' "$vss_out" | grep -q 'SHOULD-NOT-PRINT\|Shadow Copy ID\|TESTHOST'; then
+  fail "vss preview printed raw shadow details: $vss_out"
+fi
 # The plan line is allowed. The fixture must not have called the fake vssadmin binary.
 [[ ! -s "${VSSADMIN_LOG:-$TMP/vssadmin.log}" ]] || fail "vss dry-run invoked vssadmin"
 
@@ -192,6 +203,150 @@ chat_out="$(PRIVACY_SWEEP_HOME_ROOT="$chat" pwsh -NoProfile -NonInteractive -Fil
 [[ -f "$chat/Mail/archive.pst" ]] || fail "mail pst was deleted"
 if printf '%s\n' "$chat_out" | grep -q 'SECRET-CHAT\|SECRET-BODY'; then
   fail "chat clear printed a secret"
+fi
+
+echo "== hardware follow-up =="
+timeout_out="$(
+  # shellcheck source=audit/report-lib.sh
+  source "$ROOT/audit/report-lib.sh"
+  PRIVACY_SWEEP_SCAN_TIMEOUT=1 run_bounded_capture _junk sleep 5
+  printf '%s\n' "TIMED:$SCAN_TIMED_OUT"
+)"
+printf '%s\n' "$timeout_out" | grep -q "scan timed out after 1s; partial or skipped" || fail "scan timeout message missing: $timeout_out"
+printf '%s\n' "$timeout_out" | grep -q "TIMED:1" || fail "scan timeout did not continue: $timeout_out"
+
+skip_out="$(PRIVACY_SWEEP_MACOS_RECOVERY_DONE=1 PRIVACY_SWEEP_OS=Darwin bash "$ROOT/audit/audit-recovery-macos.sh")"
+printf '%s\n' "$skip_out" | grep -q "Skipping the duplicate" || fail "macOS recovery did not skip: $skip_out"
+if printf '%s\n' "$skip_out" | grep -q "Local snapshot count"; then
+  fail "skipped macOS recovery still printed snapshots: $skip_out"
+fi
+
+sleep_out="$(PRIVACY_SWEEP_OS=Darwin PRIVACY_SWEEP_HIBERNATEMODE=3 bash "$ROOT/memory-residue/memory.sh" --dry-run --remove-sleepimage)"
+printf '%s\n' "$sleep_out" | grep -q "Would NOT remove (hibernatemode is 3)" || fail "sleepimage plan did not refuse mode 3: $sleep_out"
+if printf '%s\n' "$sleep_out" | grep -q 'Would remove:'; then
+  fail "sleepimage plan still said it would remove: $sleep_out"
+fi
+
+cshome="$TMP/cloudhome"
+mkdir -p "$cshome/Library/CloudStorage/OneDrive/nested" \
+  "$cshome/Library/CloudStorage/GoogleDrive" \
+  "$cshome/Library/Mobile Documents/com~apple~CloudDocs/nested"
+printf 'SECRET-NESTED\n' > "$cshome/Library/CloudStorage/OneDrive/nested/secret.dat"
+printf 'top\n' > "$cshome/Library/CloudStorage/OneDrive/top.txt"
+printf 'SECRET-NESTED\n' > "$cshome/Library/Mobile Documents/com~apple~CloudDocs/nested/secret.dat"
+cloud_live="$(HOME="$cshome" PRIVACY_SWEEP_OS=Darwin bash "$ROOT/cloud-sync/audit-cloud.sh" --dry-run)"
+printf '%s\n' "$cloud_live" | grep -q "TopLevelEntries:" || fail "cloud provider root was not a top-level count: $cloud_live"
+if printf '%s\n' "$cloud_live" | grep -q 'SECRET-NESTED\|SizeKiB:'; then
+  fail "cloud provider root was walked or sized: $cloud_live"
+fi
+
+ph="$TMP/prunehome"
+mkdir -p "$ph/Library/CloudStorage/OneDrive" "$ph/Library/Mobile Documents" \
+  "$ph/node_modules" "$ph/captures" "$ph/Mail"
+printf 'x\n' > "$ph/Library/CloudStorage/secret.pcap"
+printf 'x\n' > "$ph/Library/CloudStorage/OneDrive/nested.pcap"
+printf 'x\n' > "$ph/Library/Mobile Documents/icloud.pcap"
+printf 'x\n' > "$ph/node_modules/hidden.pcap"
+printf 'x\n' > "$ph/captures/a.pcap"
+printf 'SECRET-BODY\n' > "$ph/Mail/inbox.mbox"
+prune_out="$(PRIVACY_SWEEP_HOME_ROOT="$ph" PRIVACY_SWEEP_SCAN_TIMEOUT=5 bash "$ROOT/local-artifacts/audit-local.sh" --dry-run)"
+printf '%s\n' "$prune_out" | grep -q "captures" || fail "readable capture dir was not reported: $prune_out"
+printf '%s\n' "$prune_out" | grep -q "inbox.mbox" || fail "mail outside a provider root was not reported: $prune_out"
+if printf '%s\n' "$prune_out" | grep -q 'secret.pcap\|nested.pcap\|icloud.pcap\|hidden.pcap\|SECRET-BODY'; then
+  fail "home scan entered a pruned directory or printed mail: $prune_out"
+fi
+
+desk="$TMP/deskhome"
+mkdir -p "$desk/Desktop" "$desk/Documents" "$desk/Downloads"
+chmod 755 "$TMP" "$desk"
+chmod 000 "$desk/Desktop"
+desk_cmd="PRIVACY_SWEEP_HOME_ROOT='$desk' PRIVACY_SWEEP_SCAN_TIMEOUT=3 bash '$ROOT/local-artifacts/audit-local.sh' --dry-run"
+desk_status=0
+if [[ "$(id -u)" -eq 0 ]] && id nobody >/dev/null 2>&1; then
+  desk_out="$(su nobody -s /bin/bash -c "$desk_cmd")" || desk_status=$?
+else
+  desk_out="$(bash -c "$desk_cmd")" || desk_status=$?
+fi
+[[ "$desk_status" -eq 0 ]] || fail "protected-folder audit exited $desk_status: $desk_out"
+printf '%s\n' "$desk_out" | grep -q "not readable from this session (macOS privacy protection)" \
+  || fail "protected Desktop was not reported: $desk_out"
+chmod 755 "$desk/Desktop"
+
+# report_keep is the helper Safari uses for Bookmarks.plist. Chrome hits it here
+# so the unreadable-file check runs on Linux as well as macOS.
+bmhome="$TMP/bookmarks-home"
+mkdir -p "$bmhome/.config/google-chrome/Default" "$bmhome/Library/Safari"
+printf 'secret-bookmark\n' > "$bmhome/.config/google-chrome/Default/Bookmarks"
+printf 'secret-bookmark\n' > "$bmhome/Library/Safari/Bookmarks.plist"
+chmod 755 "$TMP" "$bmhome" "$bmhome/.config" "$bmhome/.config/google-chrome" \
+  "$bmhome/.config/google-chrome/Default" "$bmhome/Library" "$bmhome/Library/Safari"
+chmod 000 "$bmhome/.config/google-chrome/Default/Bookmarks" "$bmhome/Library/Safari/Bookmarks.plist"
+bm_err="$TMP/bm.err"
+bm_cmd="HOME='$bmhome' XDG_CONFIG_HOME='$bmhome/.config' bash '$ROOT/browser-deep/clear-browser-deep.sh' --dry-run --only chrome"
+bm_status=0
+if [[ "$(id -u)" -eq 0 ]] && id nobody >/dev/null 2>&1; then
+  bm_out="$(su nobody -s /bin/bash -c "$bm_cmd" 2>"$bm_err")" || bm_status=$?
+else
+  bm_out="$(bash -c "$bm_cmd" 2>"$bm_err")" || bm_status=$?
+fi
+[[ "$bm_status" -eq 0 ]] || fail "bookmark readability probe exited $bm_status: $bm_out"
+printf '%s\n' "$bm_out" | grep -q "present (not readable: macOS privacy protection)" \
+  || fail "unreadable bookmarks were not reported: $bm_out"
+if grep -Ei 'permission denied|operation not permitted' "$bm_err"; then
+  fail "bookmarks probe leaked an open error: $(cat "$bm_err")"
+fi
+chmod 644 "$bmhome/.config/google-chrome/Default/Bookmarks" "$bmhome/Library/Safari/Bookmarks.plist"
+
+edgehome="$TMP/edge-home"
+mkdir -p "$edgehome/.config/microsoft-edge/Default"
+edge_status=0
+edge_out="$(HOME="$edgehome" XDG_CONFIG_HOME="$edgehome/.config" PRIVACY_SWEEP_ASSUME_OPEN=edge \
+  bash "$ROOT/browser-deep/clear-browser-deep.sh" --dry-run --clear-browser-deep --only edge)" || edge_status=$?
+[[ "$edge_status" -eq 2 ]] || fail "running Edge should exit 2, got $edge_status: $edge_out"
+printf '%s\n' "$edge_out" | grep -q "Quit Edge" || fail "running browser was not named: $edge_out"
+
+agent_hits="$(printf '%s\n' "$persist_out" | grep -c 'com.example.agent.plist' || true)"
+[[ "$agent_hits" -eq 1 ]] || fail "launch agent listed $agent_hits times: $persist_out"
+login_out="$(PRIVACY_SWEEP_OS=Darwin HOME="$TMP/login-home" bash "$ROOT/persistence/audit-persistence.sh" --dry-run)"
+printf '%s\n' "$login_out" | grep -q "does not use sudo" || fail "sfltool note missing: $login_out"
+printf '%s\n' "$login_out" | grep -q "/private/var/db/com.apple.backgroundtaskmanagement" || fail "system BTM path missing: $login_out"
+mkdir -p "$TMP/login-home/Library/Application Support/com.apple.backgroundtaskmanagementagent"
+printf 'binary\n' > "$TMP/login-home/Library/Application Support/com.apple.backgroundtaskmanagementagent/backgrounditems.btm"
+login_btm="$(PRIVACY_SWEEP_OS=Darwin HOME="$TMP/login-home" bash "$ROOT/persistence/audit-persistence.sh" --dry-run)"
+printf '%s\n' "$login_btm" | grep -q "backgrounditems.btm" || fail "user BTM path missing: $login_btm"
+printf '%s\n' "$login_btm" | grep -q "Present: yes (binary; not decoded)" || fail "user BTM was not reported: $login_btm"
+
+ffhome="$TMP/ffhome"
+mkdir -p "$ffhome/AppData/Local/Google/Chrome/User Data/Default" \
+  "$ffhome/AppData/Local/Google/Chrome/User Data/Profile 1" \
+  "$ffhome/AppData/Local/Microsoft/Edge/User Data/Default" \
+  "$ffhome/AppData/Roaming/Mozilla/Firefox/Profiles/abc.default"
+printf '%s\n' '[Profile0]' 'Name=default' 'IsRelative=1' 'Path=Profiles/abc.default' \
+  > "$ffhome/AppData/Roaming/Mozilla/Firefox/profiles.ini"
+browser_win="$(PRIVACY_SWEEP_ASSUME_OPEN=edge pwsh -NoProfile -NonInteractive -Command '
+  Remove-Item Env:LOCALAPPDATA -ErrorAction SilentlyContinue
+  Remove-Item Env:APPDATA -ErrorAction SilentlyContinue
+  Remove-Item Env:PRIVACY_SWEEP_HOME_ROOT -ErrorAction SilentlyContinue
+  $env:USERPROFILE = "'"$ffhome"'"
+  & "'"$ROOT"'/browser-deep/clear-browser-deep.ps1" -DryRun -ClearBrowserDeep
+')"
+printf '%s\n' "$browser_win" | grep -q "Profile 1" || fail "Chrome profile discovery missed Profile 1: $browser_win"
+printf '%s\n' "$browser_win" | grep -q "abc.default" || fail "Firefox profiles.ini was not read: $browser_win"
+printf '%s\n' "$browser_win" | grep -q "Not installed" || fail "missing browser was not reported: $browser_win"
+printf '%s\n' "$browser_win" | grep -q "Quit Edge" || fail "running Edge was not named on Windows: $browser_win"
+
+odhome="$TMP/odhome"
+mkdir -p "$odhome/OneDrive - Contoso/deep" \
+  "$odhome/AppData/Local/Microsoft/OneDrive/logs/Business1" \
+  "$odhome/AppData/Local/Microsoft/OneDrive/logs/Personal"
+printf 'SECRET-FILE\n' > "$odhome/OneDrive - Contoso/deep/SECRET-FILE"
+printf 'log\n' > "$odhome/AppData/Local/Microsoft/OneDrive/logs/Business1/sync.log"
+od_out="$(PRIVACY_SWEEP_HOME_ROOT="$odhome" pwsh -NoProfile -NonInteractive -File "$ROOT/cloud-sync/audit-cloud.ps1" -DryRun)"
+printf '%s\n' "$od_out" | grep -q "TopLevelEntries:" || fail "Windows cloud root was not top-level: $od_out"
+printf '%s\n' "$od_out" | grep -q "OneDrive logs Business1" || fail "Business1 logs were not checked: $od_out"
+printf '%s\n' "$od_out" | grep -q "OneDrive logs Personal" || fail "Personal logs were not checked: $od_out"
+if printf '%s\n' "$od_out" | grep -q 'SECRET-FILE'; then
+  fail "Windows cloud audit walked a nested OneDrive file: $od_out"
 fi
 
 echo "module fixtures ok"

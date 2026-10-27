@@ -13,6 +13,10 @@
 
 ### Fixed
 
+- macOS cloud and home scans no longer walk File Provider or iCloud Drive trees. Those roots are a top-level count with no `du`. Home-wide finds prune CloudStorage, Mobile Documents, Containers, Group Containers, `node_modules`, and `.git`, and each large scan stops after `PRIVACY_SWEEP_SCAN_TIMEOUT` seconds (default 20) instead of hanging. Desktop, Documents, and Downloads are probed with a timed `ls` before they are scanned.
+- A Safari bookmarks file this session cannot read is reported as present and unreadable, without an "Operation not permitted" error. A running browser is named in the refusal.
+- The macOS recovery report prints once per `--all-modules` run. A sleepimage plan with `hibernatemode` other than 0 says it would not remove the file. Launch agents are listed once per file name, and macOS 13+ login items try `sfltool dumpbtm` without sudo.
+- Windows browser profiles are found from `LOCALAPPDATA` / `APPDATA` or `USERPROFILE\AppData`, including Firefox `profiles.ini`, and a missing browser is reported as not installed. `-AllModules` passes the event-log and search-index plans (channel sizes and the rebuild plan). OneDrive for Business, SharePoint sync roots, and OneDrive log folders are top-level counts. The VSS purge preview is a count, creation dates, and storage used.
 - `find | wc` counts in the macOS and Linux clear and audit scripts no longer abort a dry run when `find` hits an unreadable directory.
 
 - `audit/`: report-only recovery structures, from the same per-OS audit scripts that already report execution stores, knowledgeC, Biome, FSEvents, and Linux login-record sizes. Windows shadow-copy counts, Recycle Bin `$I`/`$R` counts, pagefile/hiberfil/MEMORY.DMP presence and size, search-index size, thumbcache database counts, BitLocker protection status. macOS local snapshots, Document Revisions size, external `.Trashes` counts, sleepimage/swap presence, FileVault on/off. Linux swap, LUKS status without keys, and a shallow scan for wipe-tool remnant names. Nothing is deleted, and file contents are not printed.

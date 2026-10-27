@@ -3,12 +3,14 @@
 # (SSD refusal) does not close a Windows PowerShell 5.1 session.
 
 function Invoke-PrivacySweepStep {
-  param([string]$Label, [string]$Script, [string[]]$Arguments)
+  param([string]$Label, [string]$Script, [hashtable]$Parameters)
   Write-Host ""
   Write-Host "===== $Label ====="
   try {
-    if ($Arguments -and $Arguments.Count -gt 0) {
-      & $Script @Arguments
+    # A string array of switch names is not bound when this file is dot-sourced
+    # by a script that already has a DryRun switch. A hashtable splat is.
+    if ($Parameters) {
+      & $Script @Parameters
     } else {
       & $Script
     }
@@ -24,13 +26,13 @@ function Invoke-AllModules {
   Write-Host "An SSD free-space tool that refuses (exit 2) is reported and does not fail this pass."
   Write-Host "The recovery audit runs once, inside the Windows audit."
 
-  $dry = @('-DryRun')
-  $vssArgs = @('-DryRun', '-PurgeVss')
-  $browserArgs = @('-DryRun', '-ClearBrowserDeep')
-  $memoryArgs = @('-DryRun', '-DisableHibernation', '-ClearPageFileAtShutdown')
-  $localArgs = @('-DryRun', '-AllOptIn')
-  $eventArgs = @('-DryRun', '-ClearEventLogs')
-  $searchArgs = @('-DryRun', '-ResetSearchIndex')
+  $dry = @{ DryRun = $true }
+  $vssArgs = @{ DryRun = $true; PurgeVss = $true }
+  $browserArgs = @{ DryRun = $true; ClearBrowserDeep = $true }
+  $memoryArgs = @{ DryRun = $true; DisableHibernation = $true; ClearPageFileAtShutdown = $true }
+  $localArgs = @{ DryRun = $true; AllOptIn = $true }
+  $eventArgs = @{ DryRun = $true; ClearEventLogs = $true }
+  $searchArgs = @{ DryRun = $true; ResetSearchIndex = $true }
   Invoke-PrivacySweepStep "Windows clear-all" (Join-Path $RepoRoot 'windows\clear-all.ps1') $dry
   Invoke-PrivacySweepStep "Windows audit" (Join-Path $RepoRoot 'audit\audit-windows.ps1') $dry
   Invoke-PrivacySweepStep "Volume Shadow Copies" (Join-Path $RepoRoot 'recovery-purge\purge-vss.ps1') $vssArgs

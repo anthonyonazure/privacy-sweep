@@ -12,6 +12,11 @@ It reports whether the local sync logs and databases are present, and how large 
 are. It does not open them, so it does not print file names from inside your drive,
 and it does not print tokens.
 
+File Provider and iCloud Drive roots (`~/Library/CloudStorage`, `~/Library/Mobile Documents`,
+and OneDrive or SharePoint folders on Windows) are a presence line plus a top-level
+entry count. They are not walked, and `du` is not run on them, because a recursive
+listing can download files that were only online.
+
 It does not delete those files. There is no clear flag.
 
 ## What it cannot do

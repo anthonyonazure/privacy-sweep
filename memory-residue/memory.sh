@@ -97,8 +97,12 @@ echo
 if [[ "$DO_SLEEP" == true ]]; then
   target="$vm/sleepimage"
   echo "-- Plan: remove sleepimage --"
-  echo "Would remove: $target"
-  echo "Only when hibernatemode is 0, the path is a regular file, and it is not a symlink."
+  if [[ "${mode:-}" != "0" ]]; then
+    echo "Would NOT remove (hibernatemode is ${mode:-unreadable}): $target"
+  else
+    echo "Would remove: $target"
+    echo "Only when hibernatemode is 0, the path is a regular file, and it is not a symlink."
+  fi
   if [[ "$APPLY" == true && "$DRY_RUN" != true ]]; then
     if [[ "${mode:-}" != "0" ]]; then
       echo "Refusing: hibernatemode is '${mode:-unreadable}', not 0. Nothing was deleted."

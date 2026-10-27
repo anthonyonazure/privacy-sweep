@@ -7,6 +7,11 @@
 #   PRIVACY_SWEEP_PERSIST_ROOT=/fixture ./audit-persistence.sh
 set -euo pipefail
 
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$DIR/.." && pwd)"
+# shellcheck source=audit/report-lib.sh
+source "$ROOT/audit/report-lib.sh"
+
 for arg in "$@"; do
   case "$arg" in
     --dry-run|--yes|-y) ;;
@@ -23,7 +28,7 @@ OS_NAME="${PRIVACY_SWEEP_OS:-$(uname -s)}"
 root="${PRIVACY_SWEEP_PERSIST_ROOT:-}"
 
 list_files() {
-  local label="$1" path="$2" count
+  local label="$1" path="$2" count listing
   echo "-- $label --"
   echo "Path: $path"
   if [[ ! -d "$path" ]]; then
@@ -31,9 +36,15 @@ list_files() {
     echo
     return 0
   fi
-  count="$(find -P "$path" -maxdepth 1 -type f 2>/dev/null | wc -l | tr -d ' ' || true)"
+  # One line per basename. A second path with the same file name is not listed again.
+  listing="$(find -P "$path" -maxdepth 1 -type f 2>/dev/null | awk -F/ '!seen[$NF]++' || true)"
+  if [[ -z "$listing" ]]; then
+    count=0
+  else
+    count="$(printf '%s\n' "$listing" | wc -l | tr -d ' ')"
+    printf '%s\n' "$listing" | sed 's/^/  /'
+  fi
   echo "Files: ${count:-0}"
-  find -P "$path" -maxdepth 1 -type f 2>/dev/null | sed 's/^/  /' || true
   echo "Contents are not printed."
   echo
 }
@@ -47,7 +58,7 @@ count_only() {
     echo
     return 0
   fi
-  count="$(find -P "$path" -maxdepth 1 -type f 2>/dev/null | wc -l | tr -d ' ' || true)"
+  count="$(find -P "$path" -maxdepth 1 -type f 2>/dev/null | awk -F/ '!seen[$NF]++' | wc -l | tr -d ' ' || true)"
   echo "Files: ${count:-0}"
   echo "Names are not listed (system directory)."
   echo
@@ -94,13 +105,43 @@ else
           echo "Login item names:"
           printf '%s\n' "$names" | tr ',' '\n' | sed 's/^ */  /'
         else
-          echo "Login item names: unavailable from this session."
+          echo "Login item names from System Events: unavailable from this session."
         fi
+      else
+        echo "osascript is not available in this session."
+      fi
+      echo "-- Background items (macOS 13+) --"
+      echo "sfltool dumpbtm is used only when it runs without sudo. This script does not use sudo."
+      if command -v sfltool >/dev/null 2>&1; then
+        dump=""
+        run_bounded_capture dump sfltool dumpbtm
+        if [[ "$SCAN_TIMED_OUT" -eq 1 ]]; then
+          echo "sfltool dumpbtm did not finish. A GUI session may be required."
+        else
+          filtered="$(printf '%s\n' "$dump" | awk '/^[[:space:]]*(Name|Display Name|Bundle Identifier):/ { sub(/^[[:space:]]+/, ""); print "  " $0 }' || true)"
+          if [[ -n "$filtered" ]]; then
+            echo "Names from sfltool dumpbtm:"
+            printf '%s\n' "$filtered"
+            echo "Executable paths are not printed."
+          else
+            echo "sfltool dumpbtm returned no Name, Display Name, or Bundle Identifier lines without sudo."
+            echo "On macOS 13+ a GUI session can list these. SSH often cannot. The raw dump is not printed."
+          fi
+        fi
+      else
+        echo "sfltool was not found. On macOS 13+ it lists background login items when a GUI session allows it."
       fi
       btm="$HOME/Library/Application Support/com.apple.backgroundtaskmanagementagent/backgrounditems.btm"
       echo "Path: $btm"
       if [[ -e "$btm" ]]; then
         echo "Present: yes (binary; not decoded)"
+      else
+        echo "Present: no"
+      fi
+      sysbtm="/private/var/db/com.apple.backgroundtaskmanagement"
+      echo "Path: $sysbtm"
+      if [[ -d "$sysbtm" ]]; then
+        echo "Present: yes (not decoded)"
       else
         echo "Present: no"
       fi

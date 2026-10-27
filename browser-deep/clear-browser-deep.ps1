@@ -96,7 +96,7 @@ function Invoke-ChromiumRoot {
     return
   }
   if (Test-BrowserRunning $Id) {
-    Write-Host "  REFUSED: $Label is running. Quit it and run this script again."
+    Write-Host "  REFUSED: $Label is running. Quit $Label and run this script again."
     $script:Refused = $true
     return
   }
@@ -130,42 +130,144 @@ Write-Host "Pass -ClearBrowserDeep to plan a clear. Pass -Apply as well to delet
 Write-Host "-Yes does not delete. This is not part of clear-all."
 Write-Host ""
 
-$roots = @()
-if ($env:LOCALAPPDATA) {
-  $roots += @{ Id = 'chrome'; Label = 'Chrome'; Path = (Join-Path $env:LOCALAPPDATA 'Google\Chrome\User Data') }
-  $roots += @{ Id = 'edge'; Label = 'Edge'; Path = (Join-Path $env:LOCALAPPDATA 'Microsoft\Edge\User Data') }
-  $roots += @{ Id = 'brave'; Label = 'Brave'; Path = (Join-Path $env:LOCALAPPDATA 'BraveSoftware\Brave-Browser\User Data') }
-  $roots += @{ Id = 'chromium'; Label = 'Chromium'; Path = (Join-Path $env:LOCALAPPDATA 'Chromium\User Data') }
-}
-if ($env:PRIVACY_SWEEP_BROWSER_ROOT) {
-  $roots += @{ Id = 'chrome'; Label = 'Chrome fixture'; Path = $env:PRIVACY_SWEEP_BROWSER_ROOT }
+function Get-ProfileHome {
+  if ($env:PRIVACY_SWEEP_HOME_ROOT) { return $env:PRIVACY_SWEEP_HOME_ROOT }
+  if ($env:USERPROFILE) { return $env:USERPROFILE }
+  if ($env:HOME) { return $env:HOME }
+  return ''
 }
 
-foreach ($root in $roots) {
-  if (Want-Browser $root.Id) {
-    Invoke-ChromiumRoot -Id $root.Id -Label $root.Label -Path $root.Path
+function Join-Parts {
+  param([string]$Base, [string]$Rel)
+  $parts = New-Object System.Collections.Generic.List[string]
+  if ($Base) { $parts.Add($Base) | Out-Null }
+  foreach ($piece in ($Rel -split '[\\/]')) {
+    if ($piece) { $parts.Add($piece) | Out-Null }
+  }
+  if ($parts.Count -eq 0) { return '' }
+  return [System.IO.Path]::Combine([string[]]$parts.ToArray())
+}
+
+function Get-DataBases {
+  param([string]$Kind)
+  $profileHome = Get-ProfileHome
+  if ($env:PRIVACY_SWEEP_HOME_ROOT) {
+    Write-Output (Join-Parts $env:PRIVACY_SWEEP_HOME_ROOT ("AppData\" + $Kind))
+    return
+  }
+  $emitted = ''
+  if ($Kind -eq 'Local' -and $env:LOCALAPPDATA) {
+    Write-Output $env:LOCALAPPDATA
+    $emitted = $env:LOCALAPPDATA
+  }
+  if ($Kind -eq 'Roaming' -and $env:APPDATA) {
+    Write-Output $env:APPDATA
+    $emitted = $env:APPDATA
+  }
+  if ($profileHome) {
+    $fallback = Join-Parts $profileHome ("AppData\" + $Kind)
+    if ($fallback -ne $emitted) { Write-Output $fallback }
   }
 }
 
-if ($env:APPDATA -and (Want-Browser 'firefox')) {
+function Resolve-FirstPath {
+  param([string[]]$Candidates)
+  foreach ($candidate in $Candidates) {
+    if ($candidate -and (Test-Path -LiteralPath $candidate)) { return $candidate }
+  }
+  foreach ($candidate in $Candidates) {
+    if ($candidate) { return $candidate }
+  }
+  return ''
+}
+
+function Write-FirefoxProfiles {
+  param([string]$Root)
+  $ini = Join-Path $Root 'profiles.ini'
+  if (-not (Test-Path -LiteralPath $ini)) { return }
+  $path = ''
+  $relative = $true
+  foreach ($line in @(Get-Content -LiteralPath $ini -ErrorAction SilentlyContinue)) {
+    if ($line.StartsWith('Path=')) {
+      $path = $line.Substring(5).Trim()
+    } elseif ($line -eq 'IsRelative=0') {
+      $relative = $false
+    } elseif ($line -eq 'IsRelative=1') {
+      $relative = $true
+    } elseif ($line.StartsWith('[')) {
+      if ($path) {
+        if ($relative) { Write-Output (Join-Parts $Root $path) }
+        else { Write-Output $path }
+      }
+      $path = ''
+      $relative = $true
+    }
+  }
+  if ($path) {
+    if ($relative) { Write-Output (Join-Parts $Root $path) }
+    else { Write-Output $path }
+  }
+}
+
+$localBases = @(Get-DataBases 'Local')
+$browserDefs = @(
+  @{ Id = 'chrome'; Label = 'Chrome'; Rel = 'Google\Chrome\User Data' },
+  @{ Id = 'edge'; Label = 'Edge'; Rel = 'Microsoft\Edge\User Data' },
+  @{ Id = 'brave'; Label = 'Brave'; Rel = 'BraveSoftware\Brave-Browser\User Data' },
+  @{ Id = 'chromium'; Label = 'Chromium'; Rel = 'Chromium\User Data' }
+)
+foreach ($def in $browserDefs) {
+  if (-not (Want-Browser $def.Id)) { continue }
+  $candidates = @()
+  foreach ($base in $localBases) {
+    if ($base) { $candidates += (Join-Parts $base $def.Rel) }
+  }
+  $chosen = Resolve-FirstPath $candidates
+  Invoke-ChromiumRoot -Id $def.Id -Label $def.Label -Root $chosen
+}
+if ($env:PRIVACY_SWEEP_BROWSER_ROOT -and (Want-Browser 'chrome')) {
+  Invoke-ChromiumRoot -Id 'chrome' -Label 'Chrome fixture' -Root $env:PRIVACY_SWEEP_BROWSER_ROOT
+}
+
+if (Want-Browser 'firefox') {
   Write-Host "-- Firefox --"
-  $ff = Join-Path $env:APPDATA 'Mozilla\Firefox\Profiles'
-  if (Test-BrowserRunning 'firefox') {
-    Write-Host "  REFUSED: Firefox is running. Quit it and run this script again."
-    $script:Refused = $true
-  } elseif (Test-Path -LiteralPath $ff) {
-    Get-ChildItem -LiteralPath $ff -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-      Write-Host "  Profile: $($_.FullName)"
-      Report-Keep (Join-Path $_.FullName 'places.sqlite') 'Firefox places.sqlite (bookmarks live here; not deleted)'
-      if ($ClearBrowserDeep) {
-        Add-ClearPath (Join-Path $_.FullName 'storage\default')
-        Add-ClearPath (Join-Path $_.FullName 'sessionstore.jsonlz4')
-        Add-ClearPath (Join-Path $_.FullName 'sessionstore-backups')
-        Add-ClearPath (Join-Path $_.FullName 'minidumps')
+  $roamingBases = @(Get-DataBases 'Roaming')
+  $ffCandidates = @()
+  foreach ($base in $roamingBases) {
+    if ($base) { $ffCandidates += (Join-Parts $base 'Mozilla\Firefox') }
+  }
+  $ffRoot = Resolve-FirstPath $ffCandidates
+  $profiles = @()
+  if ($ffRoot -and (Test-Path -LiteralPath (Join-Path $ffRoot 'profiles.ini'))) {
+    $profiles = @(Write-FirefoxProfiles $ffRoot)
+  } elseif ($ffRoot) {
+    $legacy = Join-Path $ffRoot 'Profiles'
+    if (Test-Path -LiteralPath $legacy) {
+      Get-ChildItem -LiteralPath $legacy -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+        $profiles += $_.FullName
       }
     }
+  }
+  if ($profiles.Count -eq 0 -and -not ($ffRoot -and (Test-Path -LiteralPath $ffRoot))) {
+    if (-not $ffRoot) { $ffRoot = 'Mozilla\Firefox' }
+    Write-Host "  Not installed ($ffRoot)."
+  } elseif (Test-BrowserRunning 'firefox') {
+    Write-Host "  REFUSED: Firefox is running. Quit Firefox and run this script again."
+    $script:Refused = $true
+  } elseif ($profiles.Count -eq 0) {
+    Write-Host "  Not installed ($ffRoot)."
   } else {
-    Write-Host "  Not installed ($ff)."
+    foreach ($profile in $profiles) {
+      if (-not $profile) { continue }
+      Write-Host "  Profile: $profile"
+      Report-Keep (Join-Path $profile 'places.sqlite') 'Firefox places.sqlite (bookmarks live here; not deleted)'
+      if ($ClearBrowserDeep) {
+        Add-ClearPath (Join-Path $profile 'storage\default')
+        Add-ClearPath (Join-Path $profile 'sessionstore.jsonlz4')
+        Add-ClearPath (Join-Path $profile 'sessionstore-backups')
+        Add-ClearPath (Join-Path $profile 'minidumps')
+      }
+    }
   }
 }
 

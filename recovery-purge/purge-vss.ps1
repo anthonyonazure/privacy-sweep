@@ -25,20 +25,49 @@ Write-Host "Nothing is deleted unless you pass -PurgeVss and -Apply and type DEL
 Write-Host "-Yes does not delete. This is not part of clear-all."
 Write-Host ""
 
+function Write-ShadowSummary {
+  param([string]$Text, [string]$StorageText)
+  $count = 0
+  if ($Text) {
+    $count = [regex]::Matches($Text, 'Shadow Copy ID:').Count
+    if ($Text -match 'No items found that satisfy the query') { $count = 0 }
+  }
+  Write-Host "Shadow copies: $count"
+  if ($Text) {
+    foreach ($line in ($Text -split "`n")) {
+      $trim = $line.Trim()
+      if ($trim -like '*creation time:*') {
+        Write-Host "  Created: $trim"
+      }
+    }
+  }
+  if ($StorageText) {
+    foreach ($line in ($StorageText -split "`n")) {
+      $trim = $line.Trim()
+      if ($trim -like 'Used Shadow Copy Storage space:*') {
+        Write-Host "  Storage: $trim"
+      }
+    }
+  }
+  Write-Host "Identifiers, machine names, and recovery keys are not printed."
+}
+
 function Get-ShadowReport {
   if ($env:PRIVACY_SWEEP_RECOVERY_ROOT) {
     $path = Join-Path $env:PRIVACY_SWEEP_RECOVERY_ROOT 'vssadmin-shadows.txt'
+    $storagePath = Join-Path $env:PRIVACY_SWEEP_RECOVERY_ROOT 'vssadmin-shadowstorage.txt'
     Write-Host "-- What the audit found (fixture) --"
+    $text = ''
+    $storage = ''
     if (Test-Path -LiteralPath $path) {
-      Get-Content -LiteralPath $path | ForEach-Object {
-        $trim = $_.Trim()
-        if ($trim -like 'Shadow Copy ID:*' -or $trim -like 'Original Volume:*' -or $trim -like 'Shadow Copy Volume:*' -or $trim -like 'No items found*') {
-          Write-Host "  $trim"
-        }
-      }
+      $text = Get-Content -LiteralPath $path -Raw
     } else {
       Write-Host "No vssadmin-shadows.txt in the fixture."
     }
+    if (Test-Path -LiteralPath $storagePath) {
+      $storage = Get-Content -LiteralPath $storagePath -Raw
+    }
+    if ($text) { Write-ShadowSummary -Text $text -StorageText $storage }
     return
   }
   Write-Host "-- What the audit found --"
@@ -47,7 +76,9 @@ function Get-ShadowReport {
     Write-Host "vssadmin was not found. Shadow list is unavailable."
     return
   }
-  & vssadmin list shadows
+  $text = & vssadmin list shadows 2>&1 | Out-String
+  $storage = & vssadmin list shadowstorage 2>&1 | Out-String
+  Write-ShadowSummary -Text "$text" -StorageText "$storage"
 }
 
 Get-ShadowReport

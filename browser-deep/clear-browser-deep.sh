@@ -173,8 +173,14 @@ report_keep() {
   echo "    Path: $path"
   if [[ -e "$path" ]]; then
     local bytes
-    bytes="$(wc -c < "$path" 2>/dev/null | tr -d ' ' || true)"
-    echo "    Present: yes  Bytes: ${bytes:-unknown}"
+    # The shell opens the redirection itself. Redirecting wc's stderr does
+    # not hide "Operation not permitted" from that open.
+    bytes="$( { wc -c < "$path" | tr -d ' '; } 2>/dev/null )" || true
+    if [[ -z "${bytes:-}" ]]; then
+      echo "    present (not readable: macOS privacy protection)"
+    else
+      echo "    Present: yes  Bytes: $bytes"
+    fi
   else
     echo "    Present: no"
   fi
@@ -215,7 +221,7 @@ queue_chromium() {
     return 0
   fi
   if browser_running "$id"; then
-    echo "  REFUSED: $label is running. Quit it and run this script again."
+    echo "  REFUSED: $label is running. Quit $label and run this script again."
     REFUSED=1
     return 0
   fi
@@ -257,7 +263,7 @@ queue_chromium() {
 queue_firefox() {
   echo "-- Firefox --"
   if browser_running firefox; then
-    echo "  REFUSED: Firefox is running. Quit it and run this script again."
+    echo "  REFUSED: Firefox is running. Quit Firefox and run this script again."
     REFUSED=1
     return 0
   fi
@@ -291,7 +297,7 @@ queue_safari() {
     return 0
   fi
   if browser_running safari; then
-    echo "  REFUSED: Safari is running. Quit it and run this script again."
+    echo "  REFUSED: Safari is running. Quit Safari and run this script again."
     REFUSED=1
     return 0
   fi

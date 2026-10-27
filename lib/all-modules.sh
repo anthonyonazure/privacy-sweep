@@ -28,6 +28,9 @@ run_all_modules() {
     Darwin)
       run_step "macOS clear-all" bash "$root/macos/clear-all.sh" --dry-run
       run_step "macOS audit" bash "$root/audit/audit-macos.sh" --dry-run
+      # The macOS audit already printed snapshots, Document Revisions, and
+      # FileVault. Export is in this process; a child cannot set it for us.
+      export PRIVACY_SWEEP_MACOS_RECOVERY_DONE=1
       run_step "APFS snapshots and Document Revisions" bash "$root/recovery-purge/purge-macos.sh" --dry-run --purge-apfs-localsnapshots --purge-document-revisions
       run_step "browser deep stores" bash "$root/browser-deep/clear-browser-deep.sh" --dry-run --clear-browser-deep
       run_step "cloud sync metadata" bash "$root/cloud-sync/audit-cloud.sh" --dry-run

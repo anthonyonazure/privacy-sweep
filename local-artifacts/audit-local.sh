@@ -30,18 +30,92 @@ report_if_dir() {
   report_dir_summary "$1" "$2"
 }
 
+# -xdev does not skip File Provider or TCC folders. These paths are pruned
+# from every home-wide find. node_modules and .git are pruned by name.
+HOME_PRUNE=()
+desktop_status="$(user_dir_status "$HOME_ROOT/Desktop")"
+documents_status="$(user_dir_status "$HOME_ROOT/Documents")"
+downloads_status="$(user_dir_status "$HOME_ROOT/Downloads")"
+
+setup_home_prune() {
+  local p
+  HOME_PRUNE=(
+    -path "$HOME_ROOT/Library/CloudStorage" -o -path "$HOME_ROOT/Library/CloudStorage/*" -o
+    -path "$HOME_ROOT/Library/Mobile Documents" -o -path "$HOME_ROOT/Library/Mobile Documents/*" -o
+    -path "$HOME_ROOT/Library/Containers" -o -path "$HOME_ROOT/Library/Containers/*" -o
+    -path "$HOME_ROOT/Library/Group Containers" -o -path "$HOME_ROOT/Library/Group Containers/*" -o
+    -name node_modules -o -name .git
+  )
+  for p in Desktop Documents Downloads; do
+    if [[ "$(user_dir_status "$HOME_ROOT/$p")" == "protected" ]]; then
+      HOME_PRUNE+=( -o -path "$HOME_ROOT/$p" -o -path "$HOME_ROOT/$p/*" )
+    fi
+  done
+}
+
+home_find() {
+  local depth="$1"
+  shift
+  find -P "$HOME_ROOT" -xdev -maxdepth "$depth" \
+    \( "${HOME_PRUNE[@]}" \) -prune -o \
+    -type f \( "$@" \) -print
+}
+
+count_text_lines() {
+  local text="$1"
+  if [[ -z "$text" ]]; then
+    echo 0
+  else
+    printf '%s\n' "$text" | wc -l | tr -d ' '
+  fi
+}
+
+echo "-- Desktop, Documents, and Downloads --"
+echo "These folders are checked with a timed ls before any scan. macOS privacy protection can hide them from this session."
+for pair in \
+  "Desktop|$desktop_status|$HOME_ROOT/Desktop" \
+  "Documents|$documents_status|$HOME_ROOT/Documents" \
+  "Downloads|$downloads_status|$HOME_ROOT/Downloads"
+do
+  label="${pair%%|*}"
+  rest="${pair#*|}"
+  status="${rest%%|*}"
+  path="${rest#*|}"
+  echo "Path: $path"
+  case "$status" in
+    missing) echo "Present: no" ;;
+    protected) echo "not readable from this session (macOS privacy protection)" ;;
+    *) echo "Present: yes" ;;
+  esac
+  echo "Folder: $label"
+done
+echo
+
 echo "-- Screenshots (counts only; file names can describe the screen) --"
 for dir in "$HOME_ROOT/Pictures/Screenshots" "$HOME_ROOT/Pictures/screenshots" "$HOME_ROOT/Desktop"; do
   if [[ "$dir" == "$HOME_ROOT/Desktop" ]]; then
     echo "-- Desktop screenshot-like files --"
     echo "Path: $dir"
-    if [[ -d "$dir" ]]; then
-      count="$(find -P "$dir" -maxdepth 1 -type f \( -iname 'Screenshot*' -o -iname 'Screen Shot*' -o -iname 'CleanShot*' \) 2>/dev/null | wc -l | tr -d ' ' || true)"
-      echo "Files: ${count:-0}"
-      echo "Names are not listed."
-    else
-      echo "Present: no"
-    fi
+    case "$desktop_status" in
+      missing)
+        echo "Present: no"
+        ;;
+      protected)
+        echo "not readable from this session (macOS privacy protection)"
+        ;;
+      *)
+        shot_count=""
+        # shellcheck disable=SC2016
+        run_bounded_capture shot_count bash -c 'find -P "$1" -maxdepth 1 -type f \( -iname "Screenshot*" -o -iname "Screen Shot*" -o -iname "CleanShot*" \) 2>/dev/null | wc -l | tr -d " "' bash "$dir"
+        if [[ "$SCAN_TIMED_OUT" -eq 1 ]]; then
+          echo "Files: skipped"
+        else
+          shot_count="${shot_count//[^0-9]/}"
+          echo "Files: ${shot_count:-0}"
+        fi
+        echo "Names are not listed."
+        ;;
+    esac
     echo
   else
     report_if_dir "Screenshots" "$dir"
@@ -72,10 +146,17 @@ echo
 
 echo "-- .DS_Store count --"
 if [[ -d "$HOME_ROOT" ]]; then
-  count="$(find -P "$HOME_ROOT" -xdev -maxdepth 6 -name .DS_Store -type f 2>/dev/null | wc -l | tr -d ' ' || true)"
+  setup_home_prune
+  ds_list=""
+  run_bounded_capture ds_list home_find 6 -name .DS_Store
   echo "Path: $HOME_ROOT"
-  echo "Files: ${count:-0}"
+  if [[ "$SCAN_TIMED_OUT" -eq 1 ]]; then
+    echo "Files: skipped"
+  else
+    echo "Files: $(count_text_lines "$ds_list")"
+  fi
   echo "Finder folder views are not printed."
+  echo "CloudStorage, Mobile Documents, Containers, Group Containers, node_modules, and .git are not walked."
 else
   echo "Home root is not a directory."
 fi
@@ -85,15 +166,20 @@ echo "-- Email stores (never deleted) --"
 mail_count=0
 mail_bytes=0
 if [[ -d "$HOME_ROOT" ]]; then
-  while IFS= read -r path || [[ -n "${path:-}" ]]; do
-    [[ -n "$path" ]] || continue
-    mail_count=$((mail_count + 1))
-    size="$(wc -c < "$path" 2>/dev/null | tr -d ' ' || true)"
-    if [[ "${size:-}" =~ ^[0-9]+$ ]]; then
-      mail_bytes=$((mail_bytes + size))
-    fi
-    echo "Path: $path"
-  done < <(find -P "$HOME_ROOT" -xdev -maxdepth 5 -type f \( -name '*.pst' -o -name '*.ost' -o -name '*.mbox' \) 2>/dev/null || true)
+  setup_home_prune
+  mail_list=""
+  run_bounded_capture mail_list home_find 5 -name '*.pst' -o -name '*.ost' -o -name '*.mbox'
+  if [[ -n "$mail_list" ]]; then
+    while IFS= read -r path || [[ -n "${path:-}" ]]; do
+      [[ -n "$path" ]] || continue
+      mail_count=$((mail_count + 1))
+      size="$( { wc -c < "$path" | tr -d ' '; } 2>/dev/null )" || true
+      if [[ "${size:-}" =~ ^[0-9]+$ ]]; then
+        mail_bytes=$((mail_bytes + size))
+      fi
+      echo "Path: $path"
+    done <<< "$mail_list"
+  fi
 fi
 report_if_dir "Mail.app" "$HOME_ROOT/Library/Mail"
 report_if_dir "Thunderbird" "$HOME_ROOT/.thunderbird"
@@ -106,11 +192,16 @@ echo
 echo "-- Packet captures under the home directory --"
 pcap_count=0
 if [[ -d "$HOME_ROOT" ]]; then
-  while IFS= read -r path || [[ -n "${path:-}" ]]; do
-    [[ -n "$path" ]] || continue
-    pcap_count=$((pcap_count + 1))
-    echo "Path: $(dirname "$path")"
-  done < <(find -P "$HOME_ROOT" -xdev -maxdepth 4 -type f \( -name '*.pcap' -o -name '*.pcapng' -o -name '*.cap' \) 2>/dev/null || true)
+  setup_home_prune
+  pcap_list=""
+  run_bounded_capture pcap_list home_find 4 -name '*.pcap' -o -name '*.pcapng' -o -name '*.cap'
+  if [[ -n "$pcap_list" ]]; then
+    while IFS= read -r path || [[ -n "${path:-}" ]]; do
+      [[ -n "$path" ]] || continue
+      pcap_count=$((pcap_count + 1))
+      echo "Path: $(dirname "$path")"
+    done <<< "$pcap_list"
+  fi
 fi
 echo "Capture files: $pcap_count"
 echo "Packet contents are not read. Captures are not deleted."
@@ -119,11 +210,16 @@ echo
 echo "-- VM memory files under the home directory --"
 vm_count=0
 if [[ -d "$HOME_ROOT" ]]; then
-  while IFS= read -r path || [[ -n "${path:-}" ]]; do
-    [[ -n "$path" ]] || continue
-    vm_count=$((vm_count + 1))
-    echo "Path: $(dirname "$path")"
-  done < <(find -P "$HOME_ROOT" -xdev -maxdepth 5 -type f \( -name '*.vmem' -o -name '*.vmss' -o -name '*.vmsn' -o -name '*.sav' \) 2>/dev/null || true)
+  setup_home_prune
+  vm_list=""
+  run_bounded_capture vm_list home_find 5 -name '*.vmem' -o -name '*.vmss' -o -name '*.vmsn' -o -name '*.sav'
+  if [[ -n "$vm_list" ]]; then
+    while IFS= read -r path || [[ -n "${path:-}" ]]; do
+      [[ -n "$path" ]] || continue
+      vm_count=$((vm_count + 1))
+      echo "Path: $(dirname "$path")"
+    done <<< "$vm_list"
+  fi
 fi
 echo "VM memory files: $vm_count"
 echo "Guest RAM contents are not read. These files are not deleted."

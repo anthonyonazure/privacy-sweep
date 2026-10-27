@@ -41,12 +41,14 @@ if [[ -n "$base" ]]; then
 else
   case "$OS_NAME" in
     Darwin)
-      report_one "iCloud Mobile Documents" "$HOME/Library/Mobile Documents"
+      # File Provider and iCloud Drive roots are depth-1 only. A recursive
+      # find or du can download files that were only online.
+      report_toplevel "iCloud Mobile Documents" "$HOME/Library/Mobile Documents"
       report_one "iCloud CloudDocs" "$HOME/Library/Application Support/CloudDocs"
       report_one "Dropbox support" "$HOME/Library/Application Support/Dropbox"
       report_one "Dropbox dot-folder" "$HOME/.dropbox"
       report_one "Google DriveFS" "$HOME/Library/Application Support/Google/DriveFS"
-      report_one "OneDrive CloudStorage" "$HOME/Library/CloudStorage"
+      report_toplevel "OneDrive CloudStorage" "$HOME/Library/CloudStorage"
       ;;
     Linux)
       report_one "Dropbox dot-folder" "$HOME/.dropbox"
