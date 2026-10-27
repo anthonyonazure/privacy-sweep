@@ -233,6 +233,52 @@ status=0
 bash audit/audit-macos.sh >/dev/null || status=$?
 [[ "$status" -eq 1 ]] || fail "macOS audit should refuse Linux (status $status)"
 
+fakeh="$TMP/audit-home"
+mkdir -p "$fakeh/Pictures/Screenshots" "$fakeh/.config" "$fakeh/.local/share"
+printf 'pixels\n' > "$fakeh/Pictures/Screenshots/ignored-name.png"
+printf '%s\n' 'XDG_PICTURES_DIR="$HOME/Pictures"' > "$fakeh/.config/user-dirs.dirs"
+printf '%s\n' '<bookmark href="file:///secret"></bookmark>' > "$fakeh/.local/share/recently-used.xbel"
+report="$(HOME="$fakeh" XDG_CONFIG_HOME="$fakeh/.config" XDG_DATA_HOME="$fakeh/.local/share" XDG_CACHE_HOME="$fakeh/.cache" bash audit/audit-linux.sh)"
+printf '%s\n' "$report" | grep -q "Screenshot folders" || fail "screenshot section missing"
+printf '%s\n' "$report" | grep -A3 "Path: $fakeh/Pictures/Screenshots" | grep -q "Files: 1" || fail "screenshot count"
+if printf '%s\n' "$report" | grep -q "ignored-name"; then
+  fail "screenshot file name was printed"
+fi
+if printf '%s\n' "$report" | grep -q "file:///secret"; then
+  fail "recent document URI was printed"
+fi
+printf '%s\n' "$report" | grep -q "Bookmark entries: 1" || fail "recently-used.xbel was not counted"
+printf '%s\n' "$report" | grep -q "systemd journal" || fail "journal section missing"
+printf '%s\n' "$report" | grep -q "Journal messages are not printed" || fail "journal note missing"
+printf '%s\n' "$report" | grep -q "/var/log/wtmp" || fail "wtmp path missing"
+printf '%s\n' "$report" | grep -q "/var/log/lastlog" || fail "lastlog path missing"
+printf '%s\n' "$report" | grep -Eq 'no crontab|commands not printed|could not be checked|crontab: not installed' || fail "crontab presence missing"
+grep -q 'crontab -l 2>&1 >/dev/null' audit/audit-linux.sh || fail "crontab listing is not discarded"
+if grep -nE 'journalctl --' audit/audit-linux.sh | grep -v -- '--disk-usage'; then
+  fail "journalctl is used for more than disk usage"
+fi
+if grep -nE '(^|[[:space:]])last([[:space:]]|$)' audit/audit-linux.sh; then
+  fail "audit would run last"
+fi
+grep -q '/private/var/db/diagnostics' audit/audit-macos.sh || fail "unified log path missing"
+grep -q 'knowledgeC.db' audit/audit-macos.sh || fail "knowledgeC path missing"
+grep -q '/private/var/db/biome' audit/audit-macos.sh || fail "Biome path missing"
+grep -q '/.fseventsd' audit/audit-macos.sh || fail "FSEvents path missing"
+if grep -n 'knowledgeC.db' audit/audit-macos.sh | grep -q sqlite3; then
+  fail "knowledgeC would be queried"
+fi
+if grep -n 'log show' audit/audit-macos.sh | grep -v 'does not run'; then
+  fail "unified log would be dumped"
+fi
+for needle in AppCompatCache 'Amcache.hve' 'SRUDB.dat' UserAssist BagMRU 'Services\bam' 'Services\dam'; do
+  grep -F -q "$needle" audit/audit-windows.ps1 || fail "windows audit missing $needle"
+done
+if grep -nE 'reg (export|save|query)|Remove-Item|Set-Content|Out-File' audit/audit-windows.ps1; then
+  fail "windows audit would export or write"
+fi
+grep -q 'What cleaning cannot do' README.md audit/README.md || fail "cleaning limit section missing"
+grep -q 'after the program file has been deleted' audit/README.md || fail "execution-store note missing"
+
 echo "== lan dry-run =="
 lan="$(bash network/router-hygiene/check-lan.sh --dry-run)"
 printf '%s\n' "$lan" | grep -q "Gateway:" || fail "router check missed the gateway line"

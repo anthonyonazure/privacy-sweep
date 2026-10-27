@@ -74,7 +74,7 @@ separate because they either talk to your network, only report, or sign you out 
 | [network/pihole-report/](network/pihole-report/) | `weekly-report.sh` | Markdown report: top clients, top blocked domains, clients new since last run, ACR hits. Example cron and systemd timer included. |
 | [network/router-hygiene/](network/router-hygiene/) | `check-lan.sh` plus the checklist | Admin-password, firmware, UPnP, remote admin, forced DNS, guest Wi-Fi, WPS. The script only checks what a LAN host can see. |
 | [network/device-inventory/](network/device-inventory/) | `inventory.sh` | ARP, plus mDNS/SSDP and `nmap -sn` when you allow probes. Flags unnamed devices and TVs on this LAN. |
-| [audit/](audit/) | `audit.sh` or `audit-windows.ps1` | Counts and paths for Prefetch, Jump Lists, USBSTOR, recent items, Wi-Fi profiles, quarantine, Quick Look, thumbnails, shell history. **Never deletes.** |
+| [audit/](audit/) | `audit.sh` or `audit-windows.ps1` | Counts and paths, including Windows execution stores, macOS diagnostic and knowledge databases, and Linux journal, login-record, and crontab presence. **Never deletes.** |
 | [browsers/](browsers/) | `clear-browsers.sh` / `.ps1` | Chrome, Edge, Firefox, Safari, Brave: history, cookies, cache. Refuses to run while that browser is open. |
 | [linux/forget-wifi.sh](linux/forget-wifi.sh), [macos/forget-wifi.sh](macos/forget-wifi.sh), [windows/forget-wifi.ps1](windows/forget-wifi.ps1) | one script per OS | Lists saved Wi-Fi networks, then forgets them. Keeps the network you are using unless you ask. |
 | [android/audit-permissions.sh](android/audit-permissions.sh) | over `adb` | Lists accessibility, device-admin, SMS, call-log, notification, and overlay access. Flags installs that did not come from Play. Removes nothing. |
@@ -82,6 +82,25 @@ separate because they either talk to your network, only report, or sign you out 
 Pi-hole list changes are the one place the default is a dry run rather than a prompt. Everywhere
 else, `--dry-run` previews, a plain run asks, and `--yes` skips the prompt. Report-only scripts
 accept the same flags and still do not delete.
+
+## What cleaning cannot do
+
+Deleting a file only marks the space as reusable. Until something else is written there, the
+previous bytes can still be recovered. The clear scripts do not overwrite free space.
+
+SSDs add another difference. TRIM lets the drive erase discarded blocks when the drive is ready,
+so data can vanish sooner than it would on a hard disk, or sit in spare space the OS cannot
+point at. A delete you run yourself does not pick which of those happens.
+
+Wiping a file by overwriting it, or editing timestamps so it looks older, leaves its own trace.
+Someone comparing the disk can see the overwrite pattern and the clock change.
+
+A missing store can stand out too. No Prefetch, an empty shell history, and an empty journal
+do not look like ordinary use. The [audit](audit/) report shows what is still there, including
+Windows execution records that can name a program after that program was deleted (ShimCache,
+Amcache, SRUM, BAM/DAM, UserAssist, ShellBags), macOS unified logs, knowledgeC, Biome, and
+FSEvents, and Linux login-record files. privacy-sweep reports those and does not remove them.
+See [SECURITY.md](SECURITY.md).
 
 ## The real fix: encryption at rest
 

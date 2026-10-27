@@ -44,14 +44,15 @@ Run everything without prompts:
 | Script | What it does |
 | --- | --- |
 | [forget-wifi.sh](forget-wifi.sh) | Lists preferred Wi-Fi networks and removes them. Keeps the one you are joined to unless you pass `--include-current`. |
-| [../audit/audit-macos.sh](../audit/audit-macos.sh) | Report only: quarantine log, recent items, Quick Look, shell history. Counts and paths. |
+| [../audit/audit-macos.sh](../audit/audit-macos.sh) | Report only: quarantine log, recent items, Quick Look, shell history, plus presence and size of unified logs, knowledgeC, Biome, and FSEvents. |
 | [../browsers/clear-browsers.sh](../browsers/clear-browsers.sh) | History, cookies, and cache, including Safari. Quits if that browser is open. |
 
 ## What these scripts deliberately do NOT touch
 
-- **Spotlight index, unified logs, knowledgeC.db, Biome.** These are protected by System Integrity
+- **Spotlight index, unified logs, knowledgeC.db, Biome, FSEvents.** These are protected by System Integrity
   Protection and/or needed by the OS. macOS trims them on its own, and fighting them by hand risks
-  breaking Spotlight or Screen Time. There is no safe user-space script for them.
+  breaking Spotlight or Screen Time. There is no safe user-space script for them. The audit script
+  reports presence and size only and does not delete them.
 - **Keychain.** Your saved passwords. Clearing it would lock you out of Wi-Fi and apps. Manage it in
   the Passwords app instead.
 - **APFS snapshots and Time Machine.** Managed with `tmutil`; out of scope here so a stray run can't

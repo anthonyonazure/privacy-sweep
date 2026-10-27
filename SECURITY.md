@@ -40,10 +40,14 @@ Pi-hole, so that script previews and changes nothing until you pass `--ask` or `
 Blocking a smart-TV list can also stop a TV app, a recommendation row, or an update check.
 If a TV breaks, disable that list in the Pi-hole UI and update gravity.
 
-The audit scripts and `android/audit-permissions.sh` only print counts, paths, and permission
-names. They do not wipe Windows Event Logs, the USBSTOR registry key, macOS Spotlight, Linux
-login records, or anything else this file already puts out of scope. An audit printout is
-itself sensitive (program names, network names). Keep it to yourself.
+The audit scripts and `android/audit-permissions.sh` only print counts, paths, sizes, and
+permission names. The audit also reports whether Windows execution stores (ShimCache, Amcache,
+SRUM, BAM/DAM, UserAssist, ShellBags), macOS unified logs, knowledgeC, Biome, and FSEvents, and
+Linux login-record files are present. It does not print the program paths, log lines, or login
+rows inside them, and it does not wipe Windows Event Logs, the USBSTOR registry key, those
+execution stores, macOS Spotlight, Linux login records, or anything else this file already puts
+out of scope. An audit printout is itself sensitive (program names, network names). Keep it to
+yourself.
 
 Forgetting a saved Wi-Fi network, and clearing browser cookies, are opt-in. They are not part
 of `clear-all`. The Wi-Fi scripts leave the network you are joined to alone unless you pass
