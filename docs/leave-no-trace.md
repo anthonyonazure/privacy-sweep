@@ -152,7 +152,9 @@ disagree across stores are a signal. This repository does not write decoys, and 
 should not either.
 
 The same applies to selectively deleting one history while leaving the others. The audit
-exists so you can **see** the set. It is not a kit for inventing a different past.
+exists so you can **see** the set: execution stores, unified logs, knowledgeC, Biome,
+FSEvents, and login-record files as presence or size only, plus the recovery structures
+above. It is not a kit for inventing a different past.
 
 ## The cloud, the router, and the TV outlive the disk
 

@@ -27,7 +27,9 @@ your own device**. It is a privacy-hygiene tool, the same category as the built-
 - The scripts clear caches, histories, and recent-item lists that the OS rebuilds on its own. They
   deliberately leave system internals alone (Windows Registry and Event Logs, macOS Spotlight and
   system databases, Linux login records) because editing those risks breaking the machine and
-  crosses out of privacy hygiene.
+  crosses out of privacy hygiene. The audit reports whether Windows execution stores, macOS
+  unified logs, knowledgeC, Biome, FSEvents, Linux login-record files, and recovery structures
+  (snapshots, shadow copies, swap, encryption status) are present. It does not edit them.
 - **The default scripts do not securely overwrite data.** `clear-all` and `privacy-sweep.sh` clear
   named stores. They do not scrub free space, and they do not guarantee unrecoverability. The
   opt-in `hdd-free-space/` module can fill free space on a hard disk. It is not part of
@@ -53,11 +55,15 @@ That list is not a promise that every app still works. If a TV breaks, disable t
 the resolver UI and reload gravity or filters.
 
 The audit scripts, `android/audit-permissions.sh`, and `android-tv/audit-tv.sh` only print
-counts, paths, package names, and permission names. The Android TV script does not disable,
-hide, or uninstall packages, and it is not part of `clear-all`. They do not wipe Windows
-Event Logs, the USBSTOR registry key, macOS Spotlight, Linux login records, or anything else
-this file already puts out of scope. An audit printout is itself sensitive (program names,
-network names, installed packages). Keep it to yourself.
+counts, paths, sizes, package names, and permission names. The audit also reports whether
+Windows execution stores (ShimCache, Amcache, SRUM, BAM/DAM, UserAssist, ShellBags), macOS
+unified logs, knowledgeC, Biome, and FSEvents, and Linux login-record files are present. It
+does not print the program paths, log lines, or login rows inside them. The Android TV script
+does not disable, hide, or uninstall packages, and it is not part of `clear-all`. None of
+these reports wipe Windows Event Logs, the USBSTOR registry key, those execution stores,
+macOS Spotlight, Linux login records, or anything else this file already puts out of scope.
+An audit printout is itself sensitive (program names, network names, installed packages).
+Keep it to yourself.
 
 The same audits also **report** recovery structures: Volume Shadow Copy counts, APFS local
 snapshot names, Document Revisions size, Recycle Bin `$I`/`$R` counts (not the original

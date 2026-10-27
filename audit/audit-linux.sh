@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 # audit-linux.sh - part of privacy-sweep (report only)
 # Prints counts and paths for the Linux stores a forensic examiner would look
-# at first: thumbnail cache, recent documents, and shell history.
+# at first: thumbnail cache, recent documents, shell history, screenshot
+# folders, journal size, login-record files, and whether a user crontab exists.
 # It does not delete anything. It does not print file contents, so command
-# history and document titles stay out of the terminal scrollback.
+# history, document titles, screenshot names, journal text, login lines, and
+# crontab commands stay out of the terminal scrollback.
 #
 #   ./audit-linux.sh
 #   ./audit-linux.sh --dry-run     # same report; there is nothing to apply
 #   ./audit-linux.sh --yes         # same report
 #
 # Also reports swap, LUKS status (no keys), and wipe-tool remnant names.
-# Login records (utmp, wtmp, btmp, lastlog) are out of scope, on purpose.
+# recently-used.xbel is already counted with recent documents.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -92,11 +94,140 @@ for target in "$HOME/.bash_history" "$HOME/.zsh_history" "$HOME/.viminfo" "$HOME
   report_file "$(basename "$target")" "$target"
 done
 
+echo "-- Screenshot folders --"
+echo "File names are not listed. A name can describe what was on the screen."
+pictures="$HOME/Pictures"
+dirs_file="${XDG_CONFIG_HOME:-$HOME/.config}/user-dirs.dirs"
+if [[ -f "$dirs_file" ]]; then
+  raw=""
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    case "$line" in
+      XDG_PICTURES_DIR=*) raw="${line#XDG_PICTURES_DIR=}"; break ;;
+    esac
+  done < "$dirs_file"
+  raw="${raw%\"}"
+  raw="${raw#\"}"
+  # user-dirs.dirs stores the home directory as the two characters '$' and 'HOME'.
+  home_token="$(printf '%s%s' '$' 'HOME')"
+  if [[ "$raw" == "$home_token"/* ]]; then
+    raw="$HOME/${raw#"$home_token"/}"
+  fi
+  case "$raw" in
+    "$HOME"/*) pictures="$raw" ;;
+  esac
+fi
+seen=$'\n'
+report_dir() {
+  local path="$1"
+  [[ -n "$path" ]] || return 0
+  case "$seen" in
+    *$'\n'"$path"$'\n'*) return 0 ;;
+  esac
+  seen="$seen$path"$'\n'
+  echo "Path: $path"
+  if [[ -d "$path" ]]; then
+    local count size
+    count="$(find "$path" -type f 2>/dev/null | wc -l | tr -d ' ' || true)"
+    size="$(du -sh "$path" 2>/dev/null | cut -f1 || true)"
+    echo "Present: yes"
+    echo "Files: ${count:-unknown}"
+    echo "Size: ${size:-unknown}"
+  elif [[ -e "$path" ]]; then
+    echo "Present: yes (not a directory)"
+  else
+    echo "Present: no"
+  fi
+}
+report_dir "$pictures/Screenshots"
+report_dir "$HOME/Pictures/Screenshots"
+report_dir "$HOME/Pictures/screenshots"
+report_dir "$HOME/Screenshots"
+echo
+
+echo "-- systemd journal (size only) --"
+if command -v journalctl >/dev/null 2>&1; then
+  usage="$(journalctl --disk-usage 2>/dev/null || true)"
+  if [[ "$usage" == *"take up"* ]]; then
+    echo "$usage"
+  else
+    echo "journalctl is installed, but this account could not read the disk usage."
+  fi
+else
+  echo "journalctl: not installed"
+fi
+for target in /var/log/journal /run/log/journal; do
+  echo "Path: $target"
+  if [[ -d "$target" ]]; then
+    if [[ -r "$target" && -x "$target" ]]; then
+      echo "Present: yes"
+      echo "Size: $(du -sh "$target" 2>/dev/null | cut -f1 || true)"
+    else
+      echo "Present: yes (not readable from this account)"
+    fi
+  else
+    echo "Present: no (or not visible to this account)"
+  fi
+done
+echo "Journal messages are not printed."
+echo
+
+echo "-- Login records (presence and size only) --"
+echo "Who logged in is not printed, and these files are not edited."
+for target in /var/log/wtmp /var/log/lastlog /var/log/btmp; do
+  echo "Path: $target"
+  if [[ -f "$target" ]]; then
+    if [[ -r "$target" ]]; then
+      echo "Present: yes"
+      echo "Size: $(stat -c '%s' "$target" 2>/dev/null || echo unknown) bytes"
+    else
+      echo "Present: yes (not readable from this account)"
+    fi
+  elif [[ -e "$target" ]]; then
+    echo "Present: yes"
+  else
+    echo "Present: no (or not visible to this account)"
+  fi
+done
+echo
+
+echo "-- User crontab (presence only) --"
+user_name="$(id -un)"
+for target in "/var/spool/cron/crontabs/$user_name" "/var/spool/cron/$user_name"; do
+  echo "Path: $target"
+  if [[ -f "$target" ]]; then
+    if [[ -r "$target" ]]; then
+      echo "Present: yes"
+      echo "Size: $(stat -c '%s' "$target" 2>/dev/null || echo unknown) bytes"
+    else
+      echo "Present: yes (not readable from this account)"
+    fi
+    echo "Commands in the file are not printed."
+  elif [[ -e "$target" ]]; then
+    echo "Present: yes"
+  else
+    echo "Present: no (or not visible to this account)"
+  fi
+done
+if command -v crontab >/dev/null 2>&1; then
+  cron_status=0
+  cron_err="$(crontab -l 2>&1 >/dev/null)" || cron_status=$?
+  if [[ "$cron_status" -eq 0 ]]; then
+    echo "crontab -l: a crontab is installed for $user_name (commands not printed)."
+  elif [[ "$cron_err" == *"no crontab"* ]]; then
+    echo "crontab -l: no crontab for $user_name."
+  else
+    echo "crontab -l: could not be checked from this account."
+  fi
+else
+  echo "crontab: not installed"
+fi
+echo
+
 bash "$DIR/audit-recovery-linux.sh" "$@"
 
-echo "Swap, LUKS status, and wipe-tool remnant names are reported above."
-echo "Nothing in this audit is deleted. Snapshot and shadow-copy purge is not"
-echo "part of this tool. See docs/leave-no-trace.md."
-echo "Not included, and not cleared by this tool: utmp, wtmp, btmp, lastlog,"
-echo "the systemd journal, and other logs under /var/log."
+echo "Screenshot folders, journal size, login-record sizes, and crontab presence"
+echo "are reported above. Swap, LUKS status, and wipe-tool remnant names are too."
+echo "File contents, journal messages, who logged in, and crontab commands are not printed."
+echo "Nothing in this audit is deleted. This report does not edit login records or the journal."
+echo "Snapshot and shadow-copy purge is not part of this tool. See docs/leave-no-trace.md."
 echo "See SECURITY.md. The clear-* scripts are separate and ask before deleting."

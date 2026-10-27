@@ -2,7 +2,7 @@
 # audit-macos.sh - part of privacy-sweep (report only)
 # Prints counts and paths for the macOS stores a forensic examiner would look
 # at first: the download quarantine log, recent items, the Quick Look cache,
-# and shell history.
+# shell history, unified logs, knowledgeC, Biome, and FSEvents.
 # It does not delete anything and it does not print the contents of those stores.
 # It also reports local snapshots, Document Revisions size, external Trash
 # counts, sleepimage/swap presence, and FileVault on/off.
@@ -11,7 +11,8 @@
 #   ./audit-macos.sh --dry-run     # same report; there is nothing to apply
 #   ./audit-macos.sh --yes         # same report
 #
-# Spotlight, unified logs, knowledgeC, and the keychain are not read.
+# Spotlight and the keychain are not read. Unified logs, knowledgeC, Biome,
+# and FSEvents are reported as presence and size only.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -88,10 +89,65 @@ else
     fi
   done
 fi
+echo
+report_any() {
+  local path="$1"
+  echo "Path: $path"
+  if [[ -d "$path" ]]; then
+    if [[ -r "$path" && -x "$path" ]]; then
+      local count size
+      count="$(find "$path" -type f 2>/dev/null | wc -l | tr -d ' ' || true)"
+      size="$(du -sh "$path" 2>/dev/null | cut -f1 || true)"
+      echo "Present: yes"
+      echo "Files: ${count:-unknown}"
+      echo "Size: ${size:-unknown}"
+      echo "Individual files are not listed."
+    else
+      echo "Present: yes (not readable from this account)"
+    fi
+  elif [[ -f "$path" ]]; then
+    echo "Present: yes"
+    if [[ -r "$path" ]]; then
+      echo "Size: $(stat -f '%z' "$path" 2>/dev/null || echo unknown) bytes"
+    else
+      echo "Size: unreadable from this account"
+    fi
+  elif [[ -e "$path" ]]; then
+    echo "Present: yes"
+  else
+    echo "Present: no (or not visible to this account)"
+  fi
+}
+
+echo "-- Unified logs --"
+echo "Log messages are not printed. This does not run 'log show'."
+report_any "/private/var/db/diagnostics"
+echo
+
+echo "-- knowledgeC.db (presence and size) --"
+echo "Rows are not queried."
+report_any "$HOME/Library/Application Support/Knowledge/knowledgeC.db"
+report_any "$HOME/Library/Application Support/Knowledge/knowledgeC.db-wal"
+report_any "/private/var/db/CoreDuet/Knowledge/knowledgeC.db"
+echo
+
+echo "-- Biome (presence and size) --"
+echo "Stream contents are not printed."
+report_any "$HOME/Library/Biome"
+report_any "/private/var/db/biome"
+echo
+
+echo "-- FSEvents --"
+echo "Changed paths inside the logs are not printed."
+report_any "/.fseventsd"
+report_any "/System/Volumes/Data/.fseventsd"
+echo
+
 bash "$DIR/audit-recovery-macos.sh" "$@"
 
 echo "Local snapshots, Document Revisions, external Trash, sleepimage/swap,"
 echo "and FileVault on/off are reported above. They are not deleted."
-echo "Not included, and not cleared by this tool: Spotlight, the unified log,"
-echo "knowledgeC, Biome, and the keychain. See SECURITY.md."
-echo "knowledgeC and Biome are not read. See docs/leave-no-trace.md."
+echo "Unified logs, knowledgeC, Biome, and FSEvents are reported as presence"
+echo "and size only. Rows, log messages, and changed paths are not printed."
+echo "Not read, and not cleared by this tool: Spotlight and the keychain."
+echo "See SECURITY.md and docs/leave-no-trace.md."

@@ -52,12 +52,14 @@ administer.
 | Script | What it does |
 | --- | --- |
 | [forget-wifi.sh](forget-wifi.sh) | Lists NetworkManager Wi-Fi profiles and forgets them. Keeps the one you are using unless you pass `--include-current`. |
-| [../audit/audit-linux.sh](../audit/audit-linux.sh) | Report only: thumbnail, recent, and shell-history counts, plus swap, LUKS status, and wipe-tool remnant names. |
+| [../audit/audit-linux.sh](../audit/audit-linux.sh) | Report only: thumbnails, recent files, shell-history counts, screenshot folders, journal size, login-record file sizes, crontab presence, swap, LUKS status, and wipe-tool remnant names. |
 | [../hdd-free-space/wipe-linux.sh](../hdd-free-space/wipe-linux.sh) | Opt-in free-space fill for a hard disk. Not part of `clear-all`. Refuses SSDs unless you override. |
 | [../browsers/clear-browsers.sh](../browsers/clear-browsers.sh) | History, cookies, and cache. Quits if that browser is open. |
 
 ## Login records this set does NOT touch
 
 `utmp`, `wtmp`, `btmp` and `lastlog` (the who-logged-in-when records) are managed by the system and
-edited only by admins. They are out of scope here on purpose. Swap and LUKS are reported by
-the audit (status only, no keys) and are not cleared by these scripts.
+edited only by admins. The clear scripts leave them alone on purpose. `audit-linux.sh` reports
+whether `wtmp`, `lastlog`, and `btmp` exist and how large they are. It does not print who logged
+in, and it does not edit the files. Swap and LUKS are reported by the audit (status only, no keys)
+and are not cleared by these scripts.
