@@ -34,16 +34,25 @@ your own device**. It is a privacy-hygiene tool, the same category as the built-
 
 ## Network, browsers, and the audit report
 
-The `network/` scripts are for a Pi-hole or LAN you administer. They are not a scanner for
-networks that are not yours. Adding blocklists changes DNS for every device that uses that
-Pi-hole, so that script previews and changes nothing until you pass `--ask` or `--yes`.
-Blocking a smart-TV list can also stop a TV app, a recommendation row, or an update check.
-If a TV breaks, disable that list in the Pi-hole UI and update gravity.
+The `network/` scripts are for a Pi-hole, an AdGuard Home, or a LAN you administer. They are
+not a scanner for networks that are not yours. Adding blocklists changes DNS for every device
+that uses that resolver, so that script previews and changes nothing until you pass `--ask`
+or `--yes`. `--adguard` is explicit; an `ADGUARD_URL` alone does not switch the target.
+Passwords stay in `PIHOLE_PASSWORD` / `ADGUARD_PASSWORD` or a mode-0600 file, not on the
+command line.
 
-The audit scripts and `android/audit-permissions.sh` only print counts, paths, and permission
-names. They do not wipe Windows Event Logs, the USBSTOR registry key, macOS Spotlight, Linux
-login records, or anything else this file already puts out of scope. An audit printout is
-itself sensitive (program names, network names). Keep it to yourself.
+Brand lists (HaGeZi Samsung, LG, Roku, Amazon/Fire TV) block more than the combined smart-TV
+lists and can stop an account, a channel, or a firmware check. A keep-list of names that
+those lists are known to break is allowlisted on every apply and is never added as a block.
+That list is not a promise that every app still works. If a TV breaks, disable that list in
+the resolver UI and reload gravity or filters.
+
+The audit scripts, `android/audit-permissions.sh`, and `android-tv/audit-tv.sh` only print
+counts, paths, package names, and permission names. The Android TV script does not disable,
+hide, or uninstall packages, and it is not part of `clear-all`. They do not wipe Windows
+Event Logs, the USBSTOR registry key, macOS Spotlight, Linux login records, or anything else
+this file already puts out of scope. An audit printout is itself sensitive (program names,
+network names, installed packages). Keep it to yourself.
 
 Forgetting a saved Wi-Fi network, and clearing browser cookies, are opt-in. They are not part
 of `clear-all`. The Wi-Fi scripts leave the network you are joined to alone unless you pass

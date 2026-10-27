@@ -1,12 +1,16 @@
-# Smart-TV / ACR lists for Pi-hole.
-# Format: tier|name|note|url
-#   default  proposed on every run
-#   vendor   only with --vendor (wider than ACR; can break TV apps and updates)
-# URLs were fetched and returned HTTP 200 on 2026-10-27. Re-check them before
-# you rely on a list; publishers move files.
+# Smart-TV / ACR lists for a resolver you administer.
+# Format: tier|brand|name|note|url
+#   default  proposed on every run (brand is *)
+#   brand    only with --brand <id> or --vendor
+# Brand ids: samsung, lg, roku, firetv, vizio, hisense.
+# vizio and hisense have no row: HaGeZi has no native list for them.
+# URLs below returned HTTP 200 on 2026-10-27. These returned HTTP 404 the same day:
+#   adblock/native.vizio.txt, native.vidaa.txt, native.hisense.txt, native.firetv.txt
+# Fire TV uses native.amazon.txt. The adblock copies use ||name^ so a name covers its subdomains.
 
-default|Block List Project smart TV|Hosts-file list of smart-TV telemetry. Covers Samsung ACR, some LG ad hosts, Roku log hosts, and Vizio/Inscape (tvinteractive.tv). Does not list alphonso.tv. The copy fetched for this repo was dated 2026-07-06 in its own header.|https://raw.githubusercontent.com/blocklistproject/Lists/master/smart-tv.txt
-default|Perflyst Smart TV|Domain list aimed at smart-TV telemetry, including Alphonso and extra Vizio names. Its own version line still says 13July2023, so it is older than the Block List Project list. The file warns that updates or apps can stop working.|https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/SmartTV.txt
-vendor|HaGeZi Samsung trackers|Adblock-format list of Samsung trackers in general, not only ACR. Wider than the lists above and can interfere with Samsung accounts and updates.|https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.samsung.txt
-vendor|HaGeZi LG webOS trackers|Adblock-format list of LG webOS trackers, including Alphonso. Wider than ACR alone.|https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.lgwebos.txt
-vendor|HaGeZi Roku trackers|Adblock-format list of Roku trackers. Wider than the log and ad hosts, and it can interfere with channels.|https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.roku.txt
+default|*|Block List Project smart TV|Hosts-file list of smart-TV telemetry. Covers Samsung ACR, some LG ad hosts, Roku log hosts, and Vizio/Inscape (tvinteractive.tv). It also still lists keep-names (the clock host, firmware names, the bare samsungcloudsolution.com). Does not list alphonso.tv. The copy fetched for this repo was dated 2026-07-06 in its own header.|https://raw.githubusercontent.com/blocklistproject/Lists/master/smart-tv.txt
+default|*|Perflyst Smart TV|Domain list aimed at smart-TV telemetry, including Alphonso and extra Vizio names. Its own version line still says 13July2023. Commented lines in that file are the keep-names; a few keep-names are still active entries (the bare samsungcloudsolution.com, www.samsungotn.net, and the Hisense api.*.hismarttv.com hosts).|https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/SmartTV.txt
+brand|samsung|HaGeZi Samsung trackers|Adblock list (name and its subdomains) of Samsung trackers in general, not only ACR. Wider than the lists above. Checked HTTP 200 on 2026-10-27.|https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.samsung.txt
+brand|lg|HaGeZi LG webOS trackers|Adblock list (name and its subdomains) of LG webOS trackers, including Alphonso. Wider than ACR alone. Checked HTTP 200 on 2026-10-27.|https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.lgwebos.txt
+brand|roku|HaGeZi Roku trackers|Adblock list (name and its subdomains) of Roku trackers, including acr.roku.com and logs.roku.com. Wider than the log and ad hosts. Checked HTTP 200 on 2026-10-27.|https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.roku.txt
+brand|firetv|HaGeZi Amazon trackers|Adblock list (name and its subdomains). There is no native.firetv.txt. This is native.amazon: Amazon devices, shopping, and video, not a Fire TV-only file. Checked HTTP 200 on 2026-10-27.|https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.amazon.txt

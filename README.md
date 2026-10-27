@@ -59,6 +59,7 @@ of them require `sudo` unless the folder README says so explicitly.
 | [linux/](linux/) | Scripts | Bash. Works on GNOME/KDE desktops. |
 | [ios/](ios/) | Guide | iOS is sandboxed and encrypted; no script can reach these. Manual steps only. |
 | [android/](android/) | Guide + partial | Some clearing possible over `adb`; most is manual. A permission report is included. |
+| [android-tv/](android-tv/) | Report only | Android TV / Google TV package report over network `adb`. Flags telemetry, ads, and content rows. Disables nothing. |
 | [network/](network/) | Scripts + guides | Pi-hole lists and reports, a router checklist, and a LAN inventory. Your own network only. |
 | [audit/](audit/) | Report only | Counts and paths of the stores an examiner would look at. Deletes nothing. |
 | [browsers/](browsers/) | Scripts | History, cookies, and cache. Opt-in; not part of `clear-all`. |
@@ -70,7 +71,8 @@ separate because they either talk to your network, only report, or sign you out 
 
 | Module | What you run | What it does |
 | --- | --- | --- |
-| [network/pihole-tv/](network/pihole-tv/) | `add-blocklists.sh`, `acr-clients.sh` | Adds maintained smart-TV / ACR blocklists to a Pi-hole you administer, and reports which LAN clients looked those names up. **Dry-run unless you pass `--ask` or `--yes`.** |
+| [network/pihole-tv/](network/pihole-tv/) | `add-blocklists.sh`, `acr-clients.sh` | On-TV ACR settings, then brand-selectable blocklists and a keep-list on a Pi-hole or AdGuard Home you administer, and a report of which LAN clients looked those names up. **Dry-run unless you pass `--ask` or `--yes`.** |
+| [android-tv/](android-tv/) | `audit-tv.sh` | Over network `adb`, lists installed and enabled packages and flags known telemetry, ad, and content-row packages. **Disables nothing.** Not part of `clear-all`. |
 | [network/pihole-report/](network/pihole-report/) | `weekly-report.sh` | Markdown report: top clients, top blocked domains, clients new since last run, ACR hits. Example cron and systemd timer included. |
 | [network/router-hygiene/](network/router-hygiene/) | `check-lan.sh` plus the checklist | Admin-password, firmware, UPnP, remote admin, forced DNS, guest Wi-Fi, WPS. The script only checks what a LAN host can see. |
 | [network/device-inventory/](network/device-inventory/) | `inventory.sh` | ARP, plus mDNS/SSDP and `nmap -sn` when you allow probes. Flags unnamed devices and TVs on this LAN. |

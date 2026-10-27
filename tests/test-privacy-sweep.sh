@@ -22,19 +22,21 @@ if ! command -v shellcheck >/dev/null 2>&1; then
 fi
 while IFS= read -r script; do
   shellcheck -x "$script"
-done < <(find network audit browsers android linux macos -name '*.sh' | sort)
+done < <(find network audit browsers android android-tv linux macos -name '*.sh' | sort)
 # The top-level launcher and the original scripts should still parse.
 shellcheck -x privacy-sweep.sh
 
 echo "== python =="
-python3 -m py_compile network/lib/pihole.py network/lib/lanprobe.py tests/mock_pihole.py tests/test_logic.py
+python3 -m py_compile network/lib/pihole.py network/lib/adguard.py network/lib/lanprobe.py tests/mock_pihole.py tests/test_logic.py
 python3 tests/test_logic.py
 
 echo "== pihole fixture dry-run =="
 out="$(bash network/pihole-tv/add-blocklists.sh --fixture tests/fixtures/pihole)"
 printf '%s\n' "$out" | grep -q "Would add" || fail "fixture plan did not list a list to add"
 printf '%s\n' "$out" | grep -q "Perflyst" || fail "Perflyst missing from the plan"
-printf '%s\n' "$out" | grep -q "Already on this Pi-hole" || fail "existing list was not recognized"
+printf '%s\n' "$out" | grep -q "Already installed:" || fail "existing list was not recognized"
+printf '%s\n' "$out" | grep -q "Would allow" || fail "keep-list was not previewed"
+printf '%s\n' "$out" | grep -q "time.samsungcloudsolution.com" || fail "clock host missing from the keep preview"
 log="$TMP/applied.json"
 bash network/pihole-tv/add-blocklists.sh --fixture tests/fixtures/pihole --yes --apply-log "$log" >/dev/null
 python3 - "$log" << 'PY'
@@ -42,9 +44,39 @@ import json, sys
 data = json.load(open(sys.argv[1]))
 assert "https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/SmartTV.txt" in data["added"]
 assert "https://raw.githubusercontent.com/blocklistproject/Lists/master/smart-tv.txt" not in data["added"]
+assert "time.samsungcloudsolution.com" in data["allow"]
+assert "logs.roku.com" not in data["allow"]
 assert data["gravity"] is True
 print("fixture apply ok")
 PY
+brand="$(bash network/pihole-tv/add-blocklists.sh --fixture tests/fixtures/pihole --brand samsung)"
+printf '%s\n' "$brand" | grep -q "native.samsung.txt" || fail "samsung brand list was not selected"
+if printf '%s\n' "$brand" | grep -q "native.lgwebos.txt"; then
+  fail "lg list was selected with --brand samsung"
+fi
+if printf '%s\n' "$brand" | grep -q "native.roku.txt"; then
+  fail "roku list was selected with --brand samsung"
+fi
+if printf '%s\n' "$brand" | grep -q "native.amazon.txt"; then
+  fail "amazon list was selected with --brand samsung"
+fi
+blog="$TMP/brand.json"
+bash network/pihole-tv/add-blocklists.sh --fixture tests/fixtures/pihole --yes --brand samsung --apply-log "$blog" >/dev/null
+python3 - "$blog" << 'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+joined = " ".join(data["added"])
+assert "native.samsung.txt" in joined, data["added"]
+assert "native.lgwebos.txt" not in joined
+assert "native.roku.txt" not in joined
+assert "native.amazon.txt" not in joined
+print("brand apply ok")
+PY
+vizio="$(bash network/pihole-tv/add-blocklists.sh --fixture tests/fixtures/pihole --brand vizio)"
+printf '%s\n' "$vizio" | grep -q "no HaGeZi native list" || fail "vizio did not explain the missing list"
+if printf '%s\n' "$vizio" | grep -q "hagezi"; then
+  fail "vizio selected a native list"
+fi
 
 echo "== pihole report fixture =="
 report="$(bash network/pihole-report/weekly-report.sh --dry-run --fixture tests/fixtures/pihole)"
@@ -117,7 +149,31 @@ assert "https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/SmartT
 assert "hagezi" not in " ".join(addrs)
 regexes = [row["domain"] for row in get("/api/domains/deny/regex")["domains"]]
 assert any("alphonso" in item for item in regexes), regexes
+allows = [row["domain"] for row in get("/api/domains/allow/exact")["domains"]]
+assert "time.samsungcloudsolution.com" in allows, allows
+regex_allows = [row["domain"] for row in get("/api/domains/allow/regex")["domains"]]
+assert any("samsungotn" in item for item in regex_allows), regex_allows
+assert "time.samsungcloudsolution.com" not in regex_allows
 print("v6 apply ok")
+PY
+bash network/pihole-tv/add-blocklists.sh --yes --brand samsung >/dev/null
+python3 - "$PIHOLE_URL" << 'PY'
+import json, sys, urllib.request
+base = sys.argv[1]
+body = json.dumps({"password": "test-secret"}).encode()
+req = urllib.request.Request(base + "/api/auth", data=body, headers={"Content-Type": "application/json"})
+with urllib.request.urlopen(req) as resp:
+    sid = json.load(resp)["session"]["sid"]
+def get(path):
+    req = urllib.request.Request(base + path, headers={"X-FTL-SID": sid})
+    with urllib.request.urlopen(req) as resp:
+        return json.load(resp)
+addrs = " ".join(row["address"] for row in get("/api/lists")["lists"])
+assert "native.samsung.txt" in addrs, addrs
+assert "native.lgwebos.txt" not in addrs
+assert "native.roku.txt" not in addrs
+assert "native.amazon.txt" not in addrs
+print("brand apply on mock ok")
 PY
 api_report="$(bash network/pihole-report/weekly-report.sh --dry-run --days 7)"
 printf '%s\n' "$api_report" | grep -q "Pi-hole privacy report" || fail "API report missing header"
@@ -127,6 +183,43 @@ printf '%s\n' "$api_report" | grep -q "living-room-tv" || fail "API report misse
 if printf '%s\n' "$api_report" | grep -q "old.samsungacr.com"; then
   fail "API report included an ACR hit outside the window"
 fi
+
+echo "== mock AdGuard Home =="
+export ADGUARD_URL="$PIHOLE_URL"
+export ADGUARD_PASSWORD="test-secret"
+unset ADGUARD_PASSWORD_FILE || true
+bash network/pihole-tv/add-blocklists.sh --adguard --yes --brand samsung >/dev/null
+python3 - "$ADGUARD_URL" << 'PY'
+import base64, json, sys, urllib.request
+base = sys.argv[1]
+token = base64.b64encode(b"admin:test-secret").decode()
+req = urllib.request.Request(
+    base + "/control/filtering/status",
+    headers={"Authorization": "Basic " + token},
+)
+with urllib.request.urlopen(req) as resp:
+    body = json.load(resp)
+urls = " ".join(row["url"] for row in body["filters"])
+rules = body["user_rules"]
+assert "native.samsung.txt" in urls, urls
+assert "native.lgwebos.txt" not in urls
+assert "native.roku.txt" not in urls
+assert "native.amazon.txt" not in urls
+assert "@@||kept.example^" in rules, rules
+assert "@@time.samsungcloudsolution.com" in rules, rules
+assert "@@||samsungotn.net^" in rules, rules
+assert "@@||time.samsungcloudsolution.com^" not in rules, rules
+assert body.get("refreshed", 0) >= 1, body
+print("adguard apply ok")
+PY
+ag_acr="$(bash network/pihole-tv/acr-clients.sh --adguard --dry-run --days 7)"
+printf '%s\n' "$ag_acr" | grep -q "log-1.samsungacr.com" || fail "AdGuard ACR report missed samsungacr"
+printf '%s\n' "$ag_acr" | grep -q "living-room-tv" || fail "AdGuard ACR report missed the TV name"
+if printf '%s\n' "$ag_acr" | grep -q "old.samsungacr.com"; then
+  fail "AdGuard ACR report included a hit outside the window"
+fi
+unset ADGUARD_URL ADGUARD_PASSWORD
+
 kill "$mock_pid" 2>/dev/null || true
 wait "$mock_pid" 2>/dev/null || true
 unset PIHOLE_URL PIHOLE_PASSWORD
@@ -256,6 +349,34 @@ printf '%s\n' "$android" | grep -q "com.example.reader" || fail "accessibility s
 printf '%s\n' "$android" | grep -q "FLAG    com.side.app" || fail "sideload was not flagged"
 printf '%s\n' "$android" | grep -q "play    com.play.app" || fail "Play install was not recognized"
 printf '%s\n' "$android" | grep -q "No packages were removed" || fail "report did not say it was read-only"
+
+echo "== android tv report =="
+tvfix="$TMP/adb-tv"
+mkdir -p "$tvfix"
+printf '%s\n' \
+  'package:com.google.android.feedback' \
+  'package:com.google.android.tvrecommendations' \
+  'package:com.amazon.tv.acr' \
+  'package:com.example.player' \
+  'package:com.google.android.adservices.api' \
+  > "$tvfix/shell_pm_list_packages"
+printf '%s\n' \
+  'package:com.google.android.feedback' \
+  'package:com.google.android.tvrecommendations' \
+  'package:com.example.player' \
+  > "$tvfix/shell_pm_list_packages_-e"
+tv="$(PRIVACY_SWEEP_ADB_FIXTURE="$tvfix" bash android-tv/audit-tv.sh --dry-run)"
+printf '%s\n' "$tv" | grep -q "FLAG  com.google.android.feedback" || fail "feedback package was not flagged"
+printf '%s\n' "$tv" | grep -q "FLAG  com.google.android.tvrecommendations" || fail "content row was not flagged"
+printf '%s\n' "$tv" | grep -q "off   com.amazon.tv.acr" || fail "disabled ACR package was not marked off"
+printf '%s\n' "$tv" | grep -q "off   com.google.android.adservices.api" || fail "disabled ad package was not marked off"
+printf '%s\n' "$tv" | grep -q "No packages were disabled" || fail "android-tv report did not say it was read-only"
+if grep -nE 'pm disable|pm uninstall|pm hide|cmd package' android-tv/audit-tv.sh; then
+  fail "audit-tv.sh contains a package-changing command"
+fi
+if grep -n 'audit-tv' privacy-sweep.sh linux/clear-all.sh macos/clear-all.sh; then
+  fail "audit-tv.sh is referenced by a clear-all path"
+fi
 
 echo
 echo "All local checks passed."

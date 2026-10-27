@@ -7,13 +7,23 @@
 #   ./add-blocklists.sh --dry-run       # same as the default
 #   ./add-blocklists.sh --ask           # show the lists, then ask
 #   ./add-blocklists.sh --yes           # add them and update gravity
+#   ./add-blocklists.sh --yes --brand samsung,lg
 #
 # Optional:
-#   --vendor            also add the wider per-vendor lists in lists.txt
+#   --brand LIST        comma-separated brand ids (repeatable):
+#                       samsung, lg, roku, firetv, vizio, hisense
+#                       Adds that brand's HaGeZi list when one exists.
+#                       Vizio and Hisense have no native list.
+#   --vendor            samsung, lg, roku, and firetv. Ignored if --brand is set.
+#   --adguard           talk to AdGuard Home (ADGUARD_URL) instead of Pi-hole
+#   --pihole            talk to Pi-hole (the default)
 #   --alphonso-regex    also add a regex for Alphonso (alphonso.tv)
-#   --no-gravity        do not ask Pi-hole to rebuild gravity
-#   --fixture DIR       read JSON stand-ins instead of a live Pi-hole
+#   --no-gravity        do not ask the resolver to reload
+#   --fixture DIR       read JSON stand-ins instead of a live resolver
 #   --apply-log PATH    with --fixture --yes, record the intended change
+#
+# Keep-list rows in keep.txt are allowlisted on every apply. Watch rows are
+# printed and not written.
 #
 # Environment (do not put the password on the command line):
 #   PIHOLE_URL              default http://pi.hole
@@ -21,6 +31,10 @@
 #   PIHOLE_PASSWORD_FILE    a file whose contents are that password
 #   PIHOLE_GRAVITY_DB       v5 only: a gravity.db on this machine
 #   PIHOLE_INSECURE=1       skip TLS verification for a self-signed cert
+#   ADGUARD_URL             origin, for example http://192.168.1.3:3000
+#   ADGUARD_USER            default admin
+#   ADGUARD_PASSWORD        or ADGUARD_PASSWORD_FILE
+#   ADGUARD_INSECURE=1      skip TLS verification for a self-signed cert
 set -euo pipefail
 
 LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)"
@@ -33,6 +47,13 @@ while [[ $# -gt 0 ]]; do
     --ask) MODE="ask" ;;
     --yes|-y) MODE="apply" ;;
     --vendor) PY_ARGS+=(--vendor) ;;
+    --brand)
+      shift
+      [[ $# -gt 0 ]] || { echo "error: --brand needs a list such as samsung,lg" >&2; exit 1; }
+      PY_ARGS+=(--brand "$1")
+      ;;
+    --adguard) PY_ARGS+=(--resolver adguard) ;;
+    --pihole) PY_ARGS+=(--resolver pihole) ;;
     --alphonso-regex) PY_ARGS+=(--alphonso-regex) ;;
     --no-gravity) PY_ARGS+=(--no-gravity) ;;
     --fixture)
@@ -58,11 +79,11 @@ fi
 
 confirm() {
   local answer
-  read -r -p "Add these lists to Pi-hole? [y/N] " answer
+  read -r -p "Apply this plan to the resolver? [y/N] " answer
   [[ "$answer" =~ ^[Yy]$ ]]
 }
 
-echo "Pi-hole list changes are a dry run unless you pass --ask or --yes."
+echo "List changes are a dry run unless you pass --ask or --yes."
 python3 "$LIB/pihole.py" --lists "$(dirname "${BASH_SOURCE[0]}")/lists.txt" "${PY_ARGS[@]}" plan
 
 if [[ "$MODE" == "dry-run" ]]; then

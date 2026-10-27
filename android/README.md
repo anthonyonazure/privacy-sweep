@@ -41,6 +41,11 @@ chmod +x clear-adb.sh
 It clears per-app caches and the running log buffer (`logcat -c`). That's the honest ceiling for
 non-rooted access.
 
+Android TV and Google TV sets have a separate report,
+[android-tv/audit-tv.sh](../android-tv/audit-tv.sh). It lists packages and flags known
+telemetry, ad, and content-row names. It does not disable anything, and it is not part of
+`clear-all`.
+
 ## Permission report (optional, removes nothing)
 
 [audit-permissions.sh](audit-permissions.sh) asks the phone, over `adb`, which apps hold the

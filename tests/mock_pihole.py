@@ -8,9 +8,11 @@ behavior through the HTTP API itself (lists persist in memory).
 
 from __future__ import annotations
 
+import base64
 import json
 import sys
 import time
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -44,8 +46,13 @@ class State:
     def __init__(self) -> None:
         self.lists = [{"address": BLP, "enabled": True, "type": "block", "comment": "already installed"}]
         self.regexes: list[str] = []
+        self.allow_exact: list[str] = []
+        self.allow_regex: list[str] = []
         self.gravity = 0
         self.posts: list[str] = []
+        self.filters = [{"url": BLP, "name": "already installed", "enabled": True}]
+        self.user_rules = ["@@||kept.example^"]
+        self.refresh = 0
 
 
 STATE = State()
@@ -77,9 +84,49 @@ class Handler(BaseHTTPRequestHandler):
     def _auth_ok(self) -> bool:
         return self.headers.get("X-FTL-SID") == SID
 
+    def _basic_ok(self) -> bool:
+        expected = "Basic " + base64.b64encode(b"admin:test-secret").decode("ascii")
+        return self.headers.get("Authorization") == expected
+
+    def _querylog(self, search: str) -> list[dict]:
+        names = {item["ip"]: item.get("name") or "" for item in SPEC["clients"]}
+        needle = search.lower()
+        rows = []
+        for item in SPEC["queries"]:
+            if needle and needle not in item["domain"].lower():
+                continue
+            stamp = item_stamp(item)
+            reason = "FilteredBlackList" if int(item["status"]) == 1 else "NotFilteredNotFound"
+            rows.append(
+                {
+                    "question": {"name": item["domain"], "type": "A"},
+                    "reason": reason,
+                    "client": item["client"],
+                    "client_info": {"name": names.get(item["client"], "")},
+                    "time": datetime.fromtimestamp(stamp, timezone.utc).isoformat(),
+                }
+            )
+        return rows
+
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         path, qs = parsed.path, parse_qs(parsed.query)
+        if path.startswith("/control/"):
+            if not self._basic_ok():
+                self._send(401, {"error": "unauthorized"})
+                return
+            if path == "/control/filtering/status":
+                self._send(
+                    200,
+                    {"filters": STATE.filters, "user_rules": STATE.user_rules, "refreshed": STATE.refresh},
+                )
+                return
+            if path == "/control/querylog":
+                search = (qs.get("search") or [""])[0]
+                self._send(200, {"data": self._querylog(search)})
+                return
+            self._send(404, {"error": "not found", "path": path})
+            return
         if path == "/api/info/version":
             self._send(200, {"version": {"core": "v6", "ftl": "v6"}})
             return
@@ -94,6 +141,14 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(401, {"error": "unauthorized"})
                 return
             self._send(200, {"domains": [{"domain": item, "type": "deny", "kind": "regex"} for item in STATE.regexes]})
+            return
+        if path in ("/api/domains/allow/exact", "/api/domains/allow/regex"):
+            if not self._auth_ok():
+                self._send(401, {"error": "unauthorized"})
+                return
+            items = STATE.allow_exact if path.endswith("/exact") else STATE.allow_regex
+            kind = "exact" if path.endswith("/exact") else "regex"
+            self._send(200, {"domains": [{"domain": item, "type": "allow", "kind": kind} for item in items]})
             return
         if path == "/api/stats/database/summary":
             if not self._auth_ok():
@@ -173,6 +228,30 @@ class Handler(BaseHTTPRequestHandler):
         path, qs = parsed.path, parse_qs(parsed.query)
         body = self._read()
         STATE.posts.append(path + ("?" + parsed.query if parsed.query else ""))
+        if path.startswith("/control/"):
+            if not self._basic_ok():
+                self._send(401, {"error": "unauthorized"})
+                return
+            if path == "/control/filtering/add_url":
+                url = body.get("url")
+                if url and url not in {row["url"] for row in STATE.filters}:
+                    STATE.filters.append({"url": url, "name": body.get("name") or "", "enabled": True})
+                self._send(200, {})
+                return
+            if path == "/control/filtering/set_rules":
+                rules = body.get("rules")
+                if not isinstance(rules, list):
+                    self._send(400, {"message": "rules required"})
+                    return
+                STATE.user_rules = [str(rule) for rule in rules]
+                self._send(200, {})
+                return
+            if path == "/control/filtering/refresh":
+                STATE.refresh += 1
+                self._send(200, {})
+                return
+            self._send(404, {"error": "not found", "path": path})
+            return
         if path == "/api/auth":
             if body.get("password") != PASSWORD:
                 self._send(401, {"session": {"valid": False}})
@@ -197,6 +276,13 @@ class Handler(BaseHTTPRequestHandler):
             domain = body.get("domain")
             if domain and domain not in STATE.regexes:
                 STATE.regexes.append(domain)
+            self._send(201, {"domains": [{"domain": domain}]})
+            return
+        if path in ("/api/domains/allow/exact", "/api/domains/allow/regex"):
+            domain = body.get("domain")
+            items = STATE.allow_exact if path.endswith("/exact") else STATE.allow_regex
+            if domain and domain not in items:
+                items.append(domain)
             self._send(201, {"domains": [{"domain": domain}]})
             return
         if path == "/api/action/gravity":
