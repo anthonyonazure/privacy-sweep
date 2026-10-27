@@ -18,6 +18,7 @@ function Confirm-Phrase {
 function Confirm-YesNo {
   param([string]$Prompt)
   if ($env:PRIVACY_SWEEP_ASSUME_ANSWER -match '^[Yy]$') { return $true }
+  if ($env:PRIVACY_SWEEP_ASSUME_ANSWER -match '^[Nn]$') { return $false }
   $answer = Read-Host "$Prompt [y/N]"
   return ($answer -match '^[Yy]$')
 }

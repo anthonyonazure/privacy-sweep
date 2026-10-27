@@ -159,10 +159,16 @@ fi
 persist="$TMP/persist"
 mkdir -p "$persist/Library/LaunchAgents" "$persist/autostart" "$persist/systemd"
 printf 'SECRET-PLIST\n' > "$persist/Library/LaunchAgents/com.example.agent.plist"
+printf 'SECRET-PLIST\n' > "$persist/Library/LaunchAgents/$(printf 'odd.plist\r')"
 printf 'SECRET-EXEC\n' > "$persist/autostart/example.desktop"
 printf 'unit\n' > "$persist/loginitems.plist"
 persist_out="$(PRIVACY_SWEEP_PERSIST_ROOT="$persist" bash "$ROOT/persistence/audit-persistence.sh" --dry-run)"
 printf '%s\n' "$persist_out" | grep -q "com.example.agent.plist" || fail "persistence missed a plist path"
+printf '%s\n' "$persist_out" | grep -q -F 'Suspicious name (control character): odd.plist\r' \
+  || fail "control character in a launch agent name was not escaped: $persist_out"
+if printf '%s' "$persist_out" | grep -q $'\r'; then
+  fail "persistence printed a raw carriage return"
+fi
 if printf '%s\n' "$persist_out" | grep -q 'SECRET-PLIST\|SECRET-EXEC'; then
   fail "persistence printed file contents"
 fi
@@ -215,6 +221,24 @@ timeout_out="$(
 printf '%s\n' "$timeout_out" | grep -q "scan timed out after 1s; partial or skipped" || fail "scan timeout message missing: $timeout_out"
 printf '%s\n' "$timeout_out" | grep -q "TIMED:1" || fail "scan timeout did not continue: $timeout_out"
 
+child_pidfile="$TMP/scan-child.pid"
+rm -f "$child_pidfile"
+child_start="$(date +%s)"
+child_out="$(
+  # shellcheck source=audit/report-lib.sh
+  source "$ROOT/audit/report-lib.sh"
+  PRIVACY_SWEEP_SCAN_TIMEOUT=1 run_bounded_capture _junk bash -c 'sleep 30 & echo $! > "$1"; wait' _ "$child_pidfile"
+  printf 'TIMED:%s\n' "$SCAN_TIMED_OUT"
+)"
+child_end="$(date +%s)"
+child_elapsed="$((child_end - child_start))"
+printf '%s\n' "$child_out" | grep -q "TIMED:1" || fail "child scan did not time out: $child_out"
+[[ "$child_elapsed" -lt 8 ]] || fail "child scan took ${child_elapsed}s: $child_out"
+[[ -s "$child_pidfile" ]] || fail "child pid was not recorded: $child_out"
+if kill -0 "$(tr -d '[:space:]' < "$child_pidfile")" 2>/dev/null; then
+  fail "timed scan left a child running"
+fi
+
 skip_out="$(PRIVACY_SWEEP_MACOS_RECOVERY_DONE=1 PRIVACY_SWEEP_OS=Darwin bash "$ROOT/audit/audit-recovery-macos.sh")"
 printf '%s\n' "$skip_out" | grep -q "Skipping the duplicate" || fail "macOS recovery did not skip: $skip_out"
 if printf '%s\n' "$skip_out" | grep -q "Local snapshot count"; then
@@ -249,12 +273,19 @@ printf 'x\n' > "$ph/Library/Mobile Documents/icloud.pcap"
 printf 'x\n' > "$ph/node_modules/hidden.pcap"
 printf 'x\n' > "$ph/captures/a.pcap"
 printf 'SECRET-BODY\n' > "$ph/Mail/inbox.mbox"
+printf 'x\n' > "$ph/.DS_Store"
+mkdir -p "$ph/Library/Caches" "$ph/project/.git"
+printf 'x\n' > "$ph/Library/Caches/.DS_Store"
+printf 'x\n' > "$ph/node_modules/.DS_Store"
+printf 'x\n' > "$ph/project/.git/.DS_Store"
 prune_out="$(PRIVACY_SWEEP_HOME_ROOT="$ph" PRIVACY_SWEEP_SCAN_TIMEOUT=5 bash "$ROOT/local-artifacts/audit-local.sh" --dry-run)"
 printf '%s\n' "$prune_out" | grep -q "captures" || fail "readable capture dir was not reported: $prune_out"
 printf '%s\n' "$prune_out" | grep -q "inbox.mbox" || fail "mail outside a provider root was not reported: $prune_out"
 if printf '%s\n' "$prune_out" | grep -q 'secret.pcap\|nested.pcap\|icloud.pcap\|hidden.pcap\|SECRET-BODY'; then
   fail "home scan entered a pruned directory or printed mail: $prune_out"
 fi
+ds_section="$(printf '%s\n' "$prune_out" | sed -n '/-- \.DS_Store count --/,/^$/p')"
+printf '%s\n' "$ds_section" | grep -q 'Files: 1' || fail "DS_Store count was not 1: $ds_section"
 
 desk="$TMP/deskhome"
 mkdir -p "$desk/Desktop" "$desk/Documents" "$desk/Downloads"
@@ -347,6 +378,112 @@ printf '%s\n' "$od_out" | grep -q "OneDrive logs Business1" || fail "Business1 l
 printf '%s\n' "$od_out" | grep -q "OneDrive logs Personal" || fail "Personal logs were not checked: $od_out"
 if printf '%s\n' "$od_out" | grep -q 'SECRET-FILE'; then
   fail "Windows cloud audit walked a nested OneDrive file: $od_out"
+fi
+
+echo "== round 3 =="
+bad_ps="$TMP/bad-auto.ps1"
+good_ps="$TMP/good-auto.ps1"
+cat > "$bad_ps" <<'EOF'
+$home = 'x'
+foreach ($profile in @('a')) {}
+$pid = 1
+$host = 'h'
+$input = 1
+EOF
+cat > "$good_ps" <<'EOF'
+$userHome = 'x'
+foreach ($browserProfile in @('a')) {}
+$null = 'discard'
+$profilePath = 'p'
+$env:HOME = 'e'
+EOF
+auto_status=0
+auto_out="$(pwsh -NoProfile -NonInteractive -Command "
+  . '$ROOT/tests/parse-ps.ps1'
+  \$bad = Test-AutomaticVariableAssignment '$bad_ps'
+  \$good = Test-AutomaticVariableAssignment '$good_ps'
+  Write-Host \"BAD:\$bad\"
+  Write-Host \"GOOD:\$good\"
+  if (\$bad -lt 5) { exit 1 }
+  if (\$good -ne 0) { exit 1 }
+")" || auto_status=$?
+[[ "$auto_status" -eq 0 ]] || fail "automatic variable lint failed: $auto_out"
+printf '%s\n' "$auto_out" | grep -q 'BAD:5' || fail "expected 5 automatic assignments: $auto_out"
+
+users="$TMP/Users"
+empty="$users/anthony.incomplete"
+antho="$users/antho"
+mkdir -p "$empty" \
+  "$antho/AppData/Local/Google/Chrome/User Data/Default/IndexedDB" \
+  "$antho/AppData/Local/Microsoft/Edge/User Data/Default" \
+  "$antho/AppData/Roaming/Mozilla/Firefox/Profiles/abc.default" \
+  "$antho/OneDrive - Contoso/deep" \
+  "$users/Public/AppData/Local/Google/Chrome/User Data/Default"
+printf 'x\n' > "$antho/AppData/Local/Google/Chrome/User Data/Default/IndexedDB/keep.ldb"
+printf '%s\n' '[Profile0]' 'Name=default' 'IsRelative=1' 'Path=Profiles/abc.default' \
+  > "$antho/AppData/Roaming/Mozilla/Firefox/profiles.ini"
+printf 'SECRET-FILE\n' > "$antho/OneDrive - Contoso/deep/SECRET-FILE"
+sib_out="$(pwsh -NoProfile -NonInteractive -Command '
+  Remove-Item Env:LOCALAPPDATA -ErrorAction SilentlyContinue
+  Remove-Item Env:APPDATA -ErrorAction SilentlyContinue
+  Remove-Item Env:PRIVACY_SWEEP_HOME_ROOT -ErrorAction SilentlyContinue
+  Remove-Item Env:PRIVACY_SWEEP_CLOUD_ROOT -ErrorAction SilentlyContinue
+  $env:USERPROFILE = "'"$empty"'"
+  & "'"$ROOT"'/browser-deep/clear-browser-deep.ps1" -DryRun -ClearBrowserDeep
+  & "'"$ROOT"'/cloud-sync/audit-cloud.ps1" -DryRun
+')"
+printf '%s\n' "$sib_out" | grep -q 'antho:' || fail "sibling profile was not named: $sib_out"
+printf '%s\n' "$sib_out" | grep -q 'Chrome profiles' || fail "sibling chrome count missing: $sib_out"
+printf '%s\n' "$sib_out" | grep -q 'Re-run as that user.' || fail "sibling re-run note missing: $sib_out"
+printf '%s\n' "$sib_out" | grep -q -- '-ProfilePath' || fail "ProfilePath suggestion missing: $sib_out"
+if printf '%s\n' "$sib_out" | grep -q 'SECRET-FILE\|Contoso\|Public:'; then
+  fail "sibling note leaked a name it should not print: $sib_out"
+fi
+if printf '%s\n' "$sib_out" | grep -q 'Cannot overwrite variable HOME'; then
+  fail "cloud-sync still assigns HOME: $sib_out"
+fi
+
+keep="$antho/AppData/Local/Google/Chrome/User Data/Default/IndexedDB/keep.ldb"
+pp_out="$(pwsh -NoProfile -NonInteractive -Command '
+  Remove-Item Env:LOCALAPPDATA -ErrorAction SilentlyContinue
+  Remove-Item Env:APPDATA -ErrorAction SilentlyContinue
+  Remove-Item Env:PRIVACY_SWEEP_HOME_ROOT -ErrorAction SilentlyContinue
+  $env:USERPROFILE = "'"$empty"'"
+  & "'"$ROOT"'/browser-deep/clear-browser-deep.ps1" -DryRun -ClearBrowserDeep -ProfilePath "'"$antho"'"
+')"
+printf '%s\n' "$pp_out" | grep -q "another user's profile" || fail "foreign profile warning missing: $pp_out"
+printf '%s\n' "$pp_out" | grep -q 'IndexedDB' || fail "ProfilePath did not plan the other profile: $pp_out"
+[[ -f "$keep" ]] || fail "dry-run deleted another user's IndexedDB"
+pp_apply="$(PRIVACY_SWEEP_ASSUME_ANSWER=n pwsh -NoProfile -NonInteractive -Command '
+  Remove-Item Env:LOCALAPPDATA -ErrorAction SilentlyContinue
+  Remove-Item Env:APPDATA -ErrorAction SilentlyContinue
+  Remove-Item Env:PRIVACY_SWEEP_HOME_ROOT -ErrorAction SilentlyContinue
+  $env:USERPROFILE = "'"$empty"'"
+  & "'"$ROOT"'/browser-deep/clear-browser-deep.ps1" -Apply -ClearBrowserDeep -ProfilePath "'"$antho"'"
+')"
+[[ -f "$keep" ]] || fail "declined confirmation deleted another user's IndexedDB: $pp_apply"
+printf '%s\n' "$pp_apply" | grep -q 'Cancelled' || fail "declined confirmation did not cancel: $pp_apply"
+PRIVACY_SWEEP_ASSUME_ANSWER=y pwsh -NoProfile -NonInteractive -Command '
+  Remove-Item Env:LOCALAPPDATA -ErrorAction SilentlyContinue
+  Remove-Item Env:APPDATA -ErrorAction SilentlyContinue
+  Remove-Item Env:PRIVACY_SWEEP_HOME_ROOT -ErrorAction SilentlyContinue
+  $env:USERPROFILE = "'"$empty"'"
+  & "'"$ROOT"'/browser-deep/clear-browser-deep.ps1" -Apply -ClearBrowserDeep -ProfilePath "'"$antho"'"
+' >/dev/null
+[[ ! -f "$keep" ]] || fail "confirmed apply left another user's IndexedDB"
+unset PRIVACY_SWEEP_ASSUME_ANSWER
+
+cloud_pp="$(pwsh -NoProfile -NonInteractive -Command '
+  Remove-Item Env:LOCALAPPDATA -ErrorAction SilentlyContinue
+  Remove-Item Env:PRIVACY_SWEEP_HOME_ROOT -ErrorAction SilentlyContinue
+  Remove-Item Env:PRIVACY_SWEEP_CLOUD_ROOT -ErrorAction SilentlyContinue
+  $env:USERPROFILE = "'"$empty"'"
+  & "'"$ROOT"'/cloud-sync/audit-cloud.ps1" -DryRun -ProfilePath "'"$antho"'"
+')"
+printf '%s\n' "$cloud_pp" | grep -q 'OneDrive root' || fail "ProfilePath cloud audit missed OneDrive: $cloud_pp"
+printf '%s\n' "$cloud_pp" | grep -q 'antho' || fail "ProfilePath cloud audit missed the profile: $cloud_pp"
+if printf '%s\n' "$cloud_pp" | grep -q 'SECRET-FILE'; then
+  fail "ProfilePath cloud audit printed a nested file: $cloud_pp"
 fi
 
 echo "module fixtures ok"

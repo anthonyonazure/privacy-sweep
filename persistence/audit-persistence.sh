@@ -37,12 +37,23 @@ list_files() {
     return 0
   fi
   # One line per basename. A second path with the same file name is not listed again.
-  listing="$(find -P "$path" -maxdepth 1 -type f 2>/dev/null | awk -F/ '!seen[$NF]++' || true)"
+  # -print keeps a carriage return that is part of the file name.
+  listing="$(find -P "$path" -maxdepth 1 -type f -print 2>/dev/null | awk -F/ '!seen[$NF]++' || true)"
   if [[ -z "$listing" ]]; then
     count=0
   else
     count="$(printf '%s\n' "$listing" | wc -l | tr -d ' ')"
-    printf '%s\n' "$listing" | sed 's/^/  /'
+    while IFS= read -r line || [[ -n "${line:-}" ]]; do
+      [[ -n "$line" ]] || continue
+      base="${line##*/}"
+      if [[ "$base" == *[[:cntrl:]]* ]]; then
+        # shellcheck disable=SC2016
+        escaped="$(printf '%s' "$base" | perl -pe 's/\\/\\\\/g; s/\r/\\r/g; s/\n/\\n/g; s/\t/\\t/g; s/([\000-\037\177])/sprintf("\\x%02X", ord($1))/ge')"
+        printf '  Suspicious name (control character): %s\n' "$escaped"
+      else
+        printf '  %s\n' "$line"
+      fi
+    done <<< "$listing"
   fi
   echo "Files: ${count:-0}"
   echo "Contents are not printed."

@@ -7,17 +7,20 @@
   Not part of clear-all.
   PRIVACY_SWEEP_BROWSER_ROOT, if set, is an extra Chrome-style user-data directory (tests).
   PRIVACY_SWEEP_ASSUME_OPEN=chrome,edge,firefox,brave refuses that browser.
+  -ProfilePath audits another profile. A clear still needs -Apply and the usual confirmation.
 #>
 param(
   [switch]$DryRun,
   [switch]$Yes,
   [switch]$Apply,
   [switch]$ClearBrowserDeep,
-  [string]$Only = ''
+  [string]$Only = '',
+  [string]$ProfilePath = ''
 )
 
 $ErrorActionPreference = 'Continue'
 . (Join-Path (Split-Path -Parent $PSScriptRoot) 'lib\confirm.ps1')
+. (Join-Path (Split-Path -Parent $PSScriptRoot) 'lib\sibling-profiles.ps1')
 
 function Want-Browser {
   param([string]$Id)
@@ -46,8 +49,7 @@ function Test-BrowserRunning {
 function Test-UnderHome {
   param([string]$Path)
   if (-not (Test-Path -LiteralPath $Path)) { return $false }
-  $homeDir = $env:USERPROFILE
-  if (-not $homeDir) { $homeDir = $env:HOME }
+  $homeDir = Get-ProfileHome
   if (-not $homeDir) { return $false }
   $full = [System.IO.Path]::GetFullPath($Path)
   $root = [System.IO.Path]::GetFullPath($homeDir)
@@ -106,15 +108,15 @@ function Invoke-ChromiumRoot {
   Get-ChildItem -LiteralPath $Root -Directory -ErrorAction SilentlyContinue | ForEach-Object {
     if ($_.Name -like 'Profile *' -or $_.Name -eq 'Guest Profile') { $profiles += $_.FullName }
   }
-  foreach ($profile in $profiles) {
-    Write-Host "  Profile: $profile"
-    Report-Keep (Join-Path $profile 'Bookmarks') 'bookmarks'
+  foreach ($browserProfile in $profiles) {
+    Write-Host "  Profile: $browserProfile"
+    Report-Keep (Join-Path $browserProfile 'Bookmarks') 'bookmarks'
     if (-not $ClearBrowserDeep) { continue }
     foreach ($rel in @(
         'Local Storage\leveldb', 'IndexedDB', 'Session Storage', 'Service Worker',
         'Cache\Cache_Data', 'Sessions', 'Current Session', 'Current Tabs',
         'Last Session', 'Last Tabs')) {
-      Add-ClearPath (Join-Path $profile $rel)
+      Add-ClearPath (Join-Path $browserProfile $rel)
     }
   }
   if ($ClearBrowserDeep) {
@@ -129,12 +131,10 @@ Write-Host "Bookmarks are reported and are never deleted."
 Write-Host "Pass -ClearBrowserDeep to plan a clear. Pass -Apply as well to delete."
 Write-Host "-Yes does not delete. This is not part of clear-all."
 Write-Host ""
+Write-ForeignProfileWarning -ProfilePath $ProfilePath
 
 function Get-ProfileHome {
-  if ($env:PRIVACY_SWEEP_HOME_ROOT) { return $env:PRIVACY_SWEEP_HOME_ROOT }
-  if ($env:USERPROFILE) { return $env:USERPROFILE }
-  if ($env:HOME) { return $env:HOME }
-  return ''
+  return (Get-TargetProfile -ProfilePath $ProfilePath)
 }
 
 function Join-Parts {
@@ -151,8 +151,8 @@ function Join-Parts {
 function Get-DataBases {
   param([string]$Kind)
   $profileHome = Get-ProfileHome
-  if ($env:PRIVACY_SWEEP_HOME_ROOT) {
-    Write-Output (Join-Parts $env:PRIVACY_SWEEP_HOME_ROOT ("AppData\" + $Kind))
+  if ($ProfilePath -or $env:PRIVACY_SWEEP_HOME_ROOT) {
+    Write-Output (Join-Parts $profileHome ("AppData\" + $Kind))
     return
   }
   $emitted = ''
@@ -257,20 +257,21 @@ if (Want-Browser 'firefox') {
   } elseif ($profiles.Count -eq 0) {
     Write-Host "  Not installed ($ffRoot)."
   } else {
-    foreach ($profile in $profiles) {
-      if (-not $profile) { continue }
-      Write-Host "  Profile: $profile"
-      Report-Keep (Join-Path $profile 'places.sqlite') 'Firefox places.sqlite (bookmarks live here; not deleted)'
+    foreach ($browserProfile in $profiles) {
+      if (-not $browserProfile) { continue }
+      Write-Host "  Profile: $browserProfile"
+      Report-Keep (Join-Path $browserProfile 'places.sqlite') 'Firefox places.sqlite (bookmarks live here; not deleted)'
       if ($ClearBrowserDeep) {
-        Add-ClearPath (Join-Path $profile 'storage\default')
-        Add-ClearPath (Join-Path $profile 'sessionstore.jsonlz4')
-        Add-ClearPath (Join-Path $profile 'sessionstore-backups')
-        Add-ClearPath (Join-Path $profile 'minidumps')
+        Add-ClearPath (Join-Path $browserProfile 'storage\default')
+        Add-ClearPath (Join-Path $browserProfile 'sessionstore.jsonlz4')
+        Add-ClearPath (Join-Path $browserProfile 'sessionstore-backups')
+        Add-ClearPath (Join-Path $browserProfile 'minidumps')
       }
     }
   }
 }
 
+Write-SiblingProfileNote -Kind browser
 Write-Host ""
 Write-Host "Audit only: counts, sizes, and paths. Contents, passwords, message bodies, and row values are not printed."
 

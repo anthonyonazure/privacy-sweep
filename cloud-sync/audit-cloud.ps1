@@ -7,8 +7,9 @@
   only. A recursive walk can download files that were only online.
   PRIVACY_SWEEP_CLOUD_ROOT points at a fixture tree for tests.
   PRIVACY_SWEEP_HOME_ROOT is a fake profile (tests). Registry is skipped then.
+  -ProfilePath audits another user's profile. This script deletes nothing.
 #>
-param([switch]$DryRun, [switch]$Yes)
+param([switch]$DryRun, [switch]$Yes, [string]$ProfilePath = '')
 
 $ErrorActionPreference = 'Continue'
 $script:SeenPaths = @{}
@@ -60,20 +61,21 @@ function Report-UniqueTop {
   Report-TopLevel -Label $Label -Path $Path
 }
 
+. (Join-Path (Split-Path -Parent $PSScriptRoot) 'lib\sibling-profiles.ps1')
+
 function Get-ProfileHome {
-  if ($env:PRIVACY_SWEEP_HOME_ROOT) { return $env:PRIVACY_SWEEP_HOME_ROOT }
-  if ($env:USERPROFILE) { return $env:USERPROFILE }
-  if ($env:HOME) { return $env:HOME }
-  return ''
+  return (Get-TargetProfile -ProfilePath $ProfilePath)
 }
 
 function Get-LocalRoot {
-  if ($env:PRIVACY_SWEEP_HOME_ROOT) {
-    return [System.IO.Path]::Combine($env:PRIVACY_SWEEP_HOME_ROOT, 'AppData', 'Local')
+  if ($ProfilePath -or $env:PRIVACY_SWEEP_HOME_ROOT) {
+    $userHome = Get-ProfileHome
+    if ($userHome) { return [System.IO.Path]::Combine($userHome, 'AppData', 'Local') }
+    return ''
   }
   if ($env:LOCALAPPDATA) { return $env:LOCALAPPDATA }
-  $home = Get-ProfileHome
-  if ($home) { return [System.IO.Path]::Combine($home, 'AppData', 'Local') }
+  $userHome = Get-ProfileHome
+  if ($userHome) { return [System.IO.Path]::Combine($userHome, 'AppData', 'Local') }
   return ''
 }
 
@@ -90,8 +92,9 @@ if ($env:PRIVACY_SWEEP_CLOUD_ROOT) {
   Report-TopLevel 'Google DriveFS' (Join-Path $base 'DriveFS')
   Report-TopLevel 'iCloud' (Join-Path $base 'iCloudDrive')
 } else {
-  $home = Get-ProfileHome
-  $useRegistry = -not $env:PRIVACY_SWEEP_HOME_ROOT
+  $userHome = Get-ProfileHome
+  $useRegistry = -not $env:PRIVACY_SWEEP_HOME_ROOT -and -not $ProfilePath
+  Write-ForeignProfileWarning -ProfilePath $ProfilePath
 
   if ($useRegistry) {
     foreach ($pair in @(
@@ -129,8 +132,8 @@ if ($env:PRIVACY_SWEEP_CLOUD_ROOT) {
     }
   }
 
-  if ($home) {
-    Get-ChildItem -LiteralPath $home -Force -ErrorAction SilentlyContinue | ForEach-Object {
+  if ($userHome) {
+    Get-ChildItem -LiteralPath $userHome -Force -ErrorAction SilentlyContinue | ForEach-Object {
       if (-not $_.PSIsContainer) { return }
       if ($_.Name -eq 'OneDrive' -or $_.Name -like 'OneDrive - *') {
         Report-UniqueTop 'OneDrive root' $_.FullName
@@ -149,9 +152,10 @@ if ($env:PRIVACY_SWEEP_CLOUD_ROOT) {
     Report-UniqueTop 'Dropbox' ([System.IO.Path]::Combine($local, 'Dropbox'))
     Report-UniqueTop 'Google DriveFS' ([System.IO.Path]::Combine($local, 'Google', 'DriveFS'))
   }
-  if ($home) {
-    Report-UniqueTop 'iCloud Drive' (Join-Path $home 'iCloudDrive')
+  if ($userHome) {
+    Report-UniqueTop 'iCloud Drive' (Join-Path $userHome 'iCloudDrive')
   }
+  Write-SiblingProfileNote -Kind cloud
 }
 
 Write-Host "Audit only: counts, sizes, and paths. Contents, passwords, message bodies, and row values are not printed."

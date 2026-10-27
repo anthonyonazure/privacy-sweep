@@ -13,6 +13,9 @@
 
 ### Fixed
 
+- Windows cloud-sync no longer assigns `$HOME`, which Windows PowerShell treats as a read-only automatic variable. The PowerShell parse check rejects assignments to automatic names (`$home`, `$profile`, `$pid`, `$host`, `$input`, and the other read-only names). `$null =` stays allowed.
+- If this session's profile has no browser or OneDrive data and another profile under `Users` does, the report names that profile and the counts only. `-ProfilePath` audits another profile. A clear of that profile still requires `-Apply` and the usual confirmation.
+- The home-wide `.DS_Store` scan uses the same time limit as the other home scans, and that limit stops the `find` process, not only its parent. `~/Library` is pruned along with CloudStorage, Mobile Documents, Containers, Group Containers, `node_modules`, and `.git`. A LaunchAgent file name that contains a control character is reported with the character escaped.
 - macOS cloud and home scans no longer walk File Provider or iCloud Drive trees. Those roots are a top-level count with no `du`. Home-wide finds prune CloudStorage, Mobile Documents, Containers, Group Containers, `node_modules`, and `.git`, and each large scan stops after `PRIVACY_SWEEP_SCAN_TIMEOUT` seconds (default 20) instead of hanging. Desktop, Documents, and Downloads are probed with a timed `ls` before they are scanned.
 - A Safari bookmarks file this session cannot read is reported as present and unreadable, without an "Operation not permitted" error. A running browser is named in the refusal.
 - The macOS recovery report prints once per `--all-modules` run. A sleepimage plan with `hibernatemode` other than 0 says it would not remove the file. Launch agents are listed once per file name, and macOS 13+ login items try `sfltool dumpbtm` without sudo.

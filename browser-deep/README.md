@@ -23,7 +23,10 @@ refuses it even with `--apply`.
 ```powershell
 .\clear-browser-deep.ps1 -DryRun -ClearBrowserDeep
 .\clear-browser-deep.ps1 -ClearBrowserDeep -Apply
+.\clear-browser-deep.ps1 -DryRun -ClearBrowserDeep -ProfilePath C:\Users\someone
 ```
+
+If this session's profile has no browser data and another profile under `C:\Users` does, the report names that profile and the counts. `-ProfilePath` audits that profile. Clearing another user's files still needs `-Apply` and the usual confirmation. `-Yes` does not confirm it.
 
 Not part of `clear-all`. The older [browsers/](../browsers/) clearer still only does
 history, cookies, and the ordinary cache, and it is also outside `clear-all`.

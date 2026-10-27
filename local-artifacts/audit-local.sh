@@ -31,7 +31,8 @@ report_if_dir() {
 }
 
 # -xdev does not skip File Provider or TCC folders. These paths are pruned
-# from every home-wide find. node_modules and .git are pruned by name.
+# from every home-wide find. The whole Library tree is pruned, and
+# node_modules and .git are pruned by name.
 HOME_PRUNE=()
 desktop_status="$(user_dir_status "$HOME_ROOT/Desktop")"
 documents_status="$(user_dir_status "$HOME_ROOT/Documents")"
@@ -40,6 +41,7 @@ downloads_status="$(user_dir_status "$HOME_ROOT/Downloads")"
 setup_home_prune() {
   local p
   HOME_PRUNE=(
+    -path "$HOME_ROOT/Library" -o -path "$HOME_ROOT/Library/*" -o
     -path "$HOME_ROOT/Library/CloudStorage" -o -path "$HOME_ROOT/Library/CloudStorage/*" -o
     -path "$HOME_ROOT/Library/Mobile Documents" -o -path "$HOME_ROOT/Library/Mobile Documents/*" -o
     -path "$HOME_ROOT/Library/Containers" -o -path "$HOME_ROOT/Library/Containers/*" -o
@@ -53,21 +55,25 @@ setup_home_prune() {
   done
 }
 
-home_find() {
-  local depth="$1"
-  shift
-  find -P "$HOME_ROOT" -xdev -maxdepth "$depth" \
+# find itself is the timed command, so the scan limit can stop it.
+# A shell function would leave find running after the function was killed.
+capture_home_find() {
+  local dest="$1" depth="$2"
+  shift 2
+  run_bounded_capture "$dest" find -P "$HOME_ROOT" -xdev -maxdepth "$depth" \
     \( "${HOME_PRUNE[@]}" \) -prune -o \
     -type f \( "$@" \) -print
 }
 
 count_text_lines() {
-  local text="$1"
+  local text="$1" n
   if [[ -z "$text" ]]; then
-    echo 0
-  else
-    printf '%s\n' "$text" | wc -l | tr -d ' '
+    printf '%s\n' 0
+    return 0
   fi
+  # A captured find listing ends with a newline. Count non-empty lines only.
+  n="$(printf '%s\n' "$text" | grep -c . || true)"
+  printf '%s\n' "${n:-0}"
 }
 
 echo "-- Desktop, Documents, and Downloads --"
@@ -148,7 +154,7 @@ echo "-- .DS_Store count --"
 if [[ -d "$HOME_ROOT" ]]; then
   setup_home_prune
   ds_list=""
-  run_bounded_capture ds_list home_find 6 -name .DS_Store
+  capture_home_find ds_list 6 -name .DS_Store
   echo "Path: $HOME_ROOT"
   if [[ "$SCAN_TIMED_OUT" -eq 1 ]]; then
     echo "Files: skipped"
@@ -156,7 +162,7 @@ if [[ -d "$HOME_ROOT" ]]; then
     echo "Files: $(count_text_lines "$ds_list")"
   fi
   echo "Finder folder views are not printed."
-  echo "CloudStorage, Mobile Documents, Containers, Group Containers, node_modules, and .git are not walked."
+  echo "Library, CloudStorage, Mobile Documents, Containers, Group Containers, node_modules, and .git are not walked."
 else
   echo "Home root is not a directory."
 fi
@@ -168,7 +174,7 @@ mail_bytes=0
 if [[ -d "$HOME_ROOT" ]]; then
   setup_home_prune
   mail_list=""
-  run_bounded_capture mail_list home_find 5 -name '*.pst' -o -name '*.ost' -o -name '*.mbox'
+  capture_home_find mail_list 5 -name '*.pst' -o -name '*.ost' -o -name '*.mbox'
   if [[ -n "$mail_list" ]]; then
     while IFS= read -r path || [[ -n "${path:-}" ]]; do
       [[ -n "$path" ]] || continue
@@ -194,7 +200,7 @@ pcap_count=0
 if [[ -d "$HOME_ROOT" ]]; then
   setup_home_prune
   pcap_list=""
-  run_bounded_capture pcap_list home_find 4 -name '*.pcap' -o -name '*.pcapng' -o -name '*.cap'
+  capture_home_find pcap_list 4 -name '*.pcap' -o -name '*.pcapng' -o -name '*.cap'
   if [[ -n "$pcap_list" ]]; then
     while IFS= read -r path || [[ -n "${path:-}" ]]; do
       [[ -n "$path" ]] || continue
@@ -212,7 +218,7 @@ vm_count=0
 if [[ -d "$HOME_ROOT" ]]; then
   setup_home_prune
   vm_list=""
-  run_bounded_capture vm_list home_find 5 -name '*.vmem' -o -name '*.vmss' -o -name '*.vmsn' -o -name '*.sav'
+  capture_home_find vm_list 5 -name '*.vmem' -o -name '*.vmss' -o -name '*.vmsn' -o -name '*.sav'
   if [[ -n "$vm_list" ]]; then
     while IFS= read -r path || [[ -n "${path:-}" ]]; do
       [[ -n "$path" ]] || continue

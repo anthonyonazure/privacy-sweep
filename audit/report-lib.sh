@@ -19,7 +19,46 @@ scan_timeout_seconds() {
   esac
 }
 
-# Background wall clock for shell functions, which perl cannot exec.
+# Runs "$@" in its own process group and kills that group on the alarm,
+# so a child such as find does not keep running after the helper returns.
+# Returns 142 on timeout. stdout is the caller's redirection.
+_timed_exec() {
+  local seconds="$1"
+  shift
+  # shellcheck disable=SC2016
+  perl -e '
+my $seconds = shift @ARGV;
+my $pid = fork();
+exit 127 unless defined $pid;
+if ($pid == 0) {
+  setpgrp(0, 0);
+  exec @ARGV;
+  exit 127;
+}
+my $timed = 0;
+$SIG{ALRM} = sub {
+  $timed = 1;
+  kill "TERM", -$pid;
+};
+alarm $seconds;
+while (1) {
+  my $waited = waitpid($pid, 0);
+  last if $waited == $pid || $timed;
+}
+alarm 0;
+if ($timed) {
+  sleep 1;
+  kill "KILL", -$pid;
+  waitpid($pid, 0);
+  exit 142;
+}
+my $status = $?;
+if ($status & 127) { exit 128 + ($status & 127); }
+exit($status >> 8);
+' "$seconds" "$@"
+}
+
+# Background wall clock for shell functions when perl is unavailable.
 # Writes command stdout to $2. Returns 142 on timeout.
 _bounded_background() {
   local seconds="$1" tmp="$2" pid i rc
@@ -57,10 +96,14 @@ _bounded_payload() {
   kind="$(type -t "$1" 2>/dev/null || true)"
   if [[ "$seconds" -eq 0 ]]; then
     "$@" >"$tmp" 2>/dev/null || rc=$?
-  elif [[ "$kind" == "function" ]]; then
-    _bounded_background "$seconds" "$tmp" "$@" || rc=$?
+  elif [[ "$kind" == "function" ]] && command -v perl >/dev/null 2>&1; then
+    # shellcheck disable=SC2163
+    export -f "$1"
+    # The single-quoted script is the child shell's "$@".
+    # shellcheck disable=SC2016
+    _timed_exec "$seconds" bash -c '"$@"' _ "$@" >"$tmp" 2>/dev/null || rc=$?
   elif command -v perl >/dev/null 2>&1; then
-    perl -e 'alarm shift @ARGV; exec @ARGV' "$seconds" "$@" >"$tmp" 2>/dev/null || rc=$?
+    _timed_exec "$seconds" "$@" >"$tmp" 2>/dev/null || rc=$?
   else
     _bounded_background "$seconds" "$tmp" "$@" || rc=$?
   fi
