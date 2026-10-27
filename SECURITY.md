@@ -27,7 +27,9 @@ your own device**. It is a privacy-hygiene tool, the same category as the built-
 - The scripts clear caches, histories, and recent-item lists that the OS rebuilds on its own. They
   deliberately leave system internals alone (Windows Registry and Event Logs, macOS Spotlight and
   system databases, Linux login records) because editing those risks breaking the machine and
-  crosses out of privacy hygiene.
+  crosses out of privacy hygiene. The audit reports whether Windows execution stores, macOS
+  unified logs, knowledgeC, Biome, FSEvents, and Linux login-record files are present. It does
+  not edit them.
 - **These scripts do not securely overwrite data.** They clear the stores; they do not scrub free
   space or guarantee unrecoverability. For that, and for the only protection that covers every store
   at once, use full-disk encryption: FileVault, BitLocker, LUKS, or a phone's built-in encryption.
@@ -48,11 +50,15 @@ That list is not a promise that every app still works. If a TV breaks, disable t
 the resolver UI and reload gravity or filters.
 
 The audit scripts, `android/audit-permissions.sh`, and `android-tv/audit-tv.sh` only print
-counts, paths, package names, and permission names. The Android TV script does not disable,
-hide, or uninstall packages, and it is not part of `clear-all`. They do not wipe Windows
-Event Logs, the USBSTOR registry key, macOS Spotlight, Linux login records, or anything else
-this file already puts out of scope. An audit printout is itself sensitive (program names,
-network names, installed packages). Keep it to yourself.
+counts, paths, sizes, package names, and permission names. The audit also reports whether
+Windows execution stores (ShimCache, Amcache, SRUM, BAM/DAM, UserAssist, ShellBags), macOS
+unified logs, knowledgeC, Biome, and FSEvents, and Linux login-record files are present. It
+does not print the program paths, log lines, or login rows inside them. The Android TV script
+does not disable, hide, or uninstall packages, and it is not part of `clear-all`. None of
+these reports wipe Windows Event Logs, the USBSTOR registry key, those execution stores,
+macOS Spotlight, Linux login records, or anything else this file already puts out of scope.
+An audit printout is itself sensitive (program names, network names, installed packages).
+Keep it to yourself.
 
 Forgetting a saved Wi-Fi network, and clearing browser cookies, are opt-in. They are not part
 of `clear-all`. The Wi-Fi scripts leave the network you are joined to alone unless you pass

@@ -52,10 +52,12 @@ administer.
 | Script | What it does |
 | --- | --- |
 | [forget-wifi.sh](forget-wifi.sh) | Lists NetworkManager Wi-Fi profiles and forgets them. Keeps the one you are using unless you pass `--include-current`. |
-| [../audit/audit-linux.sh](../audit/audit-linux.sh) | Report only: thumbnail, recent, and shell-history counts and paths. |
+| [../audit/audit-linux.sh](../audit/audit-linux.sh) | Report only: thumbnails, recent files, shell-history counts, screenshot folders, journal size, login-record file sizes, and crontab presence. |
 | [../browsers/clear-browsers.sh](../browsers/clear-browsers.sh) | History, cookies, and cache. Quits if that browser is open. |
 
 ## Login records this set does NOT touch
 
 `utmp`, `wtmp`, `btmp` and `lastlog` (the who-logged-in-when records) are managed by the system and
-edited only by admins. They are out of scope here on purpose.
+edited only by admins. The clear scripts leave them alone on purpose. `audit-linux.sh` reports
+whether `wtmp`, `lastlog`, and `btmp` exist and how large they are. It does not print who logged
+in, and it does not edit the files.
