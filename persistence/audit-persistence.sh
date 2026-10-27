@@ -47,8 +47,11 @@ list_files() {
       [[ -n "$line" ]] || continue
       base="${line##*/}"
       if [[ "$base" == *[[:cntrl:]]* ]]; then
+        # One \r in the escaped name is one real CR in the file name.
+        # "name.plist\r" is a trailing CR. "name\r.plist\r" is a CR before
+        # the extension and another at the end. Nothing is added here.
         # shellcheck disable=SC2016
-        escaped="$(printf '%s' "$base" | perl -pe 's/\\/\\\\/g; s/\r/\\r/g; s/\n/\\n/g; s/\t/\\t/g; s/([\000-\037\177])/sprintf("\\x%02X", ord($1))/ge')"
+        escaped="$(printf '%s' "$base" | perl -ne 's/\\/\\\\/g; s/\r/\\r/g; s/\n/\\n/g; s/\t/\\t/g; s/([\000-\037\177])/sprintf("\\x%02X", ord($1))/ge; chomp; print')"
         printf '  Suspicious name (control character): %s\n' "$escaped"
       else
         printf '  %s\n' "$line"

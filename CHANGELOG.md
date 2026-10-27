@@ -13,6 +13,8 @@
 
 ### Fixed
 
+- `clear-local.sh` counts and deletes `.DS_Store` with the same time limit and prune list as the audit. `~/Library`, CloudStorage, `node_modules`, and `.git` are not walked.
+- The other-profile note still lists OneDrive for Business and SharePoint roots on another profile when this session does not have those roots, even if this session has a consumer OneDrive folder. The note gives names and counts only. A `-ProfilePath` run does not recommend that same profile again.
 - Windows cloud-sync no longer assigns `$HOME`, which Windows PowerShell treats as a read-only automatic variable. The PowerShell parse check rejects assignments to automatic names (`$home`, `$profile`, `$pid`, `$host`, `$input`, and the other read-only names). `$null =` stays allowed.
 - If this session's profile has no browser or OneDrive data and another profile under `Users` does, the report names that profile and the counts only. `-ProfilePath` audits another profile. A clear of that profile still requires `-Apply` and the usual confirmation.
 - The home-wide `.DS_Store` scan uses the same time limit as the other home scans, and that limit stops the `find` process, not only its parent. `~/Library` is pruned along with CloudStorage, Mobile Documents, Containers, Group Containers, `node_modules`, and `.git`. A LaunchAgent file name that contains a control character is reported with the character escaped.

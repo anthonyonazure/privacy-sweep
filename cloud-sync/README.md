@@ -19,7 +19,7 @@ listing can download files that were only online.
 
 It does not delete those files. There is no clear flag.
 
-If this session's profile has no OneDrive folder but another profile under `C:\Users` does, the report names that profile and the counts. It does not list files inside it. `-ProfilePath` points the same report at one other profile. It still deletes nothing.
+If this session's profile is missing OneDrive, OneDrive for Business, or SharePoint roots that another profile under `C:\Users` has, the report names that profile and the counts. It does not list files or organization names inside those folders. `-ProfilePath` points the same report at one other profile and does not recommend that profile again. It still deletes nothing.
 
 ## What it cannot do
 

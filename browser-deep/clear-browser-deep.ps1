@@ -271,7 +271,7 @@ if (Want-Browser 'firefox') {
   }
 }
 
-Write-SiblingProfileNote -Kind browser
+Write-SiblingProfileNote -Kind browser -ProfilePath $ProfilePath
 Write-Host ""
 Write-Host "Audit only: counts, sizes, and paths. Contents, passwords, message bodies, and row values are not printed."
 

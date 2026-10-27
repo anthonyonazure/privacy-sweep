@@ -160,12 +160,21 @@ persist="$TMP/persist"
 mkdir -p "$persist/Library/LaunchAgents" "$persist/autostart" "$persist/systemd"
 printf 'SECRET-PLIST\n' > "$persist/Library/LaunchAgents/com.example.agent.plist"
 printf 'SECRET-PLIST\n' > "$persist/Library/LaunchAgents/$(printf 'odd.plist\r')"
+printf 'SECRET-PLIST\n' > "$persist/Library/LaunchAgents/$(printf 'com.bmad.persona-evolution.plist\r')"
+printf 'SECRET-PLIST\n' > "$persist/Library/LaunchAgents/$(printf 'com.bmad.persona-evolution\r.plist')"
 printf 'SECRET-EXEC\n' > "$persist/autostart/example.desktop"
 printf 'unit\n' > "$persist/loginitems.plist"
 persist_out="$(PRIVACY_SWEEP_PERSIST_ROOT="$persist" bash "$ROOT/persistence/audit-persistence.sh" --dry-run)"
 printf '%s\n' "$persist_out" | grep -q "com.example.agent.plist" || fail "persistence missed a plist path"
 printf '%s\n' "$persist_out" | grep -q -F 'Suspicious name (control character): odd.plist\r' \
   || fail "control character in a launch agent name was not escaped: $persist_out"
+printf '%s\n' "$persist_out" | grep -F -x '  Suspicious name (control character): com.bmad.persona-evolution.plist\r' \
+  || fail "trailing CR was not escaped once: $persist_out"
+printf '%s\n' "$persist_out" | grep -F -x '  Suspicious name (control character): com.bmad.persona-evolution\r.plist' \
+  || fail "CR before .plist gained or lost an escape: $persist_out"
+if printf '%s\n' "$persist_out" | grep -F -x '  Suspicious name (control character): com.bmad.persona-evolution\r.plist\r'; then
+  fail "escaped LaunchAgent name gained a carriage return that is not in the file: $persist_out"
+fi
 if printf '%s' "$persist_out" | grep -q $'\r'; then
   fail "persistence printed a raw carriage return"
 fi
@@ -453,6 +462,9 @@ pp_out="$(pwsh -NoProfile -NonInteractive -Command '
 ')"
 printf '%s\n' "$pp_out" | grep -q "another user's profile" || fail "foreign profile warning missing: $pp_out"
 printf '%s\n' "$pp_out" | grep -q 'IndexedDB' || fail "ProfilePath did not plan the other profile: $pp_out"
+if printf '%s\n' "$pp_out" | grep -q 'An elevated dry run can pass -ProfilePath'; then
+  fail "ProfilePath run still recommended the profile it is already auditing: $pp_out"
+fi
 [[ -f "$keep" ]] || fail "dry-run deleted another user's IndexedDB"
 pp_apply="$(PRIVACY_SWEEP_ASSUME_ANSWER=n pwsh -NoProfile -NonInteractive -Command '
   Remove-Item Env:LOCALAPPDATA -ErrorAction SilentlyContinue
@@ -484,6 +496,64 @@ printf '%s\n' "$cloud_pp" | grep -q 'OneDrive root' || fail "ProfilePath cloud a
 printf '%s\n' "$cloud_pp" | grep -q 'antho' || fail "ProfilePath cloud audit missed the profile: $cloud_pp"
 if printf '%s\n' "$cloud_pp" | grep -q 'SECRET-FILE'; then
   fail "ProfilePath cloud audit printed a nested file: $cloud_pp"
+fi
+if printf '%s\n' "$cloud_pp" | grep -q 'An elevated dry run can pass -ProfilePath'; then
+  fail "cloud ProfilePath run still recommended that profile: $cloud_pp"
+fi
+
+dscl="$TMP/ds-clear"
+mkdir -p "$dscl/Library/Caches" "$dscl/node_modules" "$dscl/project/.git" "$dscl/Desktop"
+printf 'x\n' > "$dscl/.DS_Store"
+printf 'x\n' > "$dscl/Library/Caches/.DS_Store"
+printf 'x\n' > "$dscl/node_modules/.DS_Store"
+printf 'x\n' > "$dscl/project/.git/.DS_Store"
+printf 'keep\n' > "$dscl/keep.txt"
+ds_clear="$(PRIVACY_SWEEP_HOME_ROOT="$dscl" PRIVACY_SWEEP_SCAN_TIMEOUT=5 bash "$ROOT/local-artifacts/clear-local.sh" --dry-run --clear-ds-store)"
+ds_section="$(printf '%s\n' "$ds_clear" | sed -n '/-- \.DS_Store --/,/^$/p')"
+printf '%s\n' "$ds_section" | grep -q 'Files: 1' || fail "clear-local DS_Store count was not 1: $ds_section"
+[[ -f "$dscl/Library/Caches/.DS_Store" && -f "$dscl/.DS_Store" ]] || fail "dry-run removed a .DS_Store"
+PRIVACY_SWEEP_HOME_ROOT="$dscl" PRIVACY_SWEEP_SCAN_TIMEOUT=5 \
+  bash "$ROOT/local-artifacts/clear-local.sh" --apply --clear-ds-store >/dev/null
+[[ ! -f "$dscl/.DS_Store" ]] || fail "apply left the home .DS_Store"
+[[ -f "$dscl/Library/Caches/.DS_Store" ]] || fail "apply deleted a Library .DS_Store"
+[[ -f "$dscl/node_modules/.DS_Store" && -f "$dscl/project/.git/.DS_Store" ]] || fail "apply deleted a pruned .DS_Store"
+[[ -f "$dscl/keep.txt" ]] || fail "apply deleted an unrelated file"
+
+u2="$TMP/round4/Users"
+sess="$u2/anthony.incomplete"
+other="$u2/antho"
+mkdir -p "$sess/OneDrive" \
+  "$other/OneDrive - Contoso/deep" \
+  "$other/AppData/Local/Microsoft/OneDrive/settings/Business1"
+printf 'SECRET-FILE\n' > "$other/OneDrive - Contoso/deep/SECRET-FILE"
+printf 'libraryFolder=C:\\Users\\antho\\Sites\\SecretOrg\n' \
+  > "$other/AppData/Local/Microsoft/OneDrive/settings/Business1/scope.ini"
+biz_out="$(pwsh -NoProfile -NonInteractive -Command '
+  Remove-Item Env:LOCALAPPDATA -ErrorAction SilentlyContinue
+  Remove-Item Env:APPDATA -ErrorAction SilentlyContinue
+  Remove-Item Env:PRIVACY_SWEEP_HOME_ROOT -ErrorAction SilentlyContinue
+  Remove-Item Env:PRIVACY_SWEEP_CLOUD_ROOT -ErrorAction SilentlyContinue
+  $env:USERPROFILE = "'"$sess"'"
+  & "'"$ROOT"'/cloud-sync/audit-cloud.ps1" -DryRun
+')"
+printf '%s\n' "$biz_out" | grep -q 'OneDrive for Business roots 1' || fail "business roots on another profile were skipped: $biz_out"
+printf '%s\n' "$biz_out" | grep -q 'SharePoint roots 1' || fail "SharePoint roots on another profile were skipped: $biz_out"
+printf '%s\n' "$biz_out" | grep -q 'no OneDrive for Business or SharePoint roots' || fail "business gap was not explained: $biz_out"
+if printf '%s\n' "$biz_out" | grep -q 'SECRET-FILE\|Contoso\|SecretOrg'; then
+  fail "business note leaked a folder or library name: $biz_out"
+fi
+biz_pp="$(pwsh -NoProfile -NonInteractive -Command '
+  Remove-Item Env:LOCALAPPDATA -ErrorAction SilentlyContinue
+  Remove-Item Env:PRIVACY_SWEEP_HOME_ROOT -ErrorAction SilentlyContinue
+  Remove-Item Env:PRIVACY_SWEEP_CLOUD_ROOT -ErrorAction SilentlyContinue
+  $env:USERPROFILE = "'"$sess"'"
+  & "'"$ROOT"'/cloud-sync/audit-cloud.ps1" -DryRun -ProfilePath "'"$other"'"
+')"
+if printf '%s\n' "$biz_pp" | grep -q 'An elevated dry run can pass -ProfilePath'; then
+  fail "ProfilePath run recommended the profile it already targets: $biz_pp"
+fi
+if printf '%s\n' "$biz_pp" | grep -q 'SECRET-FILE\|SecretOrg'; then
+  fail "ProfilePath cloud audit printed a library path or nested file: $biz_pp"
 fi
 
 echo "module fixtures ok"

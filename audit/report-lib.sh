@@ -277,6 +277,49 @@ report_toplevel() {
   echo
 }
 
+# -xdev does not skip File Provider or TCC folders. These paths are pruned
+# from every home-wide find. The whole Library tree is pruned, and
+# node_modules and .git are pruned by name. HOME_ROOT is the caller's.
+HOME_PRUNE=()
+
+setup_home_prune() {
+  local p
+  HOME_PRUNE=(
+    -path "$HOME_ROOT/Library" -o -path "$HOME_ROOT/Library/*" -o
+    -path "$HOME_ROOT/Library/CloudStorage" -o -path "$HOME_ROOT/Library/CloudStorage/*" -o
+    -path "$HOME_ROOT/Library/Mobile Documents" -o -path "$HOME_ROOT/Library/Mobile Documents/*" -o
+    -path "$HOME_ROOT/Library/Containers" -o -path "$HOME_ROOT/Library/Containers/*" -o
+    -path "$HOME_ROOT/Library/Group Containers" -o -path "$HOME_ROOT/Library/Group Containers/*" -o
+    -name node_modules -o -name .git
+  )
+  for p in Desktop Documents Downloads; do
+    if [[ "$(user_dir_status "$HOME_ROOT/$p")" == "protected" ]]; then
+      HOME_PRUNE+=( -o -path "$HOME_ROOT/$p" -o -path "$HOME_ROOT/$p/*" )
+    fi
+  done
+}
+
+# find itself is the timed command, so the scan limit can stop it.
+# A shell function would leave find running after the function was killed.
+capture_home_find() {
+  local dest="$1" depth="$2"
+  shift 2
+  run_bounded_capture "$dest" find -P "$HOME_ROOT" -xdev -maxdepth "$depth" \
+    \( "${HOME_PRUNE[@]}" \) -prune -o \
+    -type f \( "$@" \) -print
+}
+
+count_text_lines() {
+  local text="$1" n
+  if [[ -z "$text" ]]; then
+    printf '%s\n' 0
+    return 0
+  fi
+  # A captured find listing ends with a newline. Count non-empty lines only.
+  n="$(printf '%s\n' "$text" | grep -c . || true)"
+  printf '%s\n' "${n:-0}"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   set -euo pipefail
   if [[ $# -eq 0 ]]; then

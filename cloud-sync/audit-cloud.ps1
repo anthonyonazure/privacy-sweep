@@ -155,7 +155,7 @@ if ($env:PRIVACY_SWEEP_CLOUD_ROOT) {
   if ($userHome) {
     Report-UniqueTop 'iCloud Drive' (Join-Path $userHome 'iCloudDrive')
   }
-  Write-SiblingProfileNote -Kind cloud
+  Write-SiblingProfileNote -Kind cloud -ProfilePath $ProfilePath
 }
 
 Write-Host "Audit only: counts, sizes, and paths. Contents, passwords, message bodies, and row values are not printed."

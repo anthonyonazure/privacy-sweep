@@ -13,6 +13,8 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$DIR/.." && pwd)"
 # shellcheck source=lib/confirm.sh
 source "$ROOT/lib/confirm.sh"
+# shellcheck source=audit/report-lib.sh
+source "$ROOT/audit/report-lib.sh"
 
 DRY_RUN=false
 APPLY=false
@@ -154,11 +156,32 @@ fi
 
 if [[ "$DO_DS" == true ]]; then
   echo "-- .DS_Store --"
-  n="$(find -P "$HOME_ROOT" -xdev -maxdepth 6 -name .DS_Store -type f 2>/dev/null | wc -l | tr -d ' ' || true)"
-  echo "Files: ${n:-0}"
-  if will_apply; then
-    find -P "$HOME_ROOT" -xdev -maxdepth 6 -name .DS_Store -type f -delete 2>/dev/null || true
-    echo "Deleted .DS_Store files under $HOME_ROOT (max depth 6). Finder will recreate them."
+  setup_home_prune
+  ds_list=""
+  capture_home_find ds_list 6 -name .DS_Store
+  if [[ "$SCAN_TIMED_OUT" -eq 1 ]]; then
+    echo "Files: skipped"
+  else
+    echo "Files: $(count_text_lines "$ds_list")"
+  fi
+  echo "Library, CloudStorage, Mobile Documents, Containers, Group Containers, node_modules, and .git are not walked."
+  if will_apply && [[ "$SCAN_TIMED_OUT" -eq 1 ]]; then
+    echo "Scan timed out. Listed .DS_Store files were not deleted."
+  elif will_apply && [[ -n "$ds_list" ]]; then
+    while IFS= read -r ds_path || [[ -n "${ds_path:-}" ]]; do
+      [[ -n "$ds_path" ]] || continue
+      case "$ds_path" in
+        "$HOME_ROOT"/.DS_Store|"$HOME_ROOT"/*) ;;
+        *)
+          echo "Refusing unexpected path."
+          continue
+          ;;
+      esac
+      command rm -f -- "$ds_path"
+    done <<< "$ds_list"
+    echo "Deleted listed .DS_Store files under $HOME_ROOT (max depth 6). Finder will recreate them."
+  elif will_apply; then
+    echo "No .DS_Store files to delete."
   else
     echo "Dry run: nothing was deleted."
   fi
