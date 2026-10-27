@@ -16,7 +16,12 @@ esac; done
 
 confirm() { $ASSUME_YES && return 0; read -r -p "Proceed? [y/N] " a; [[ "$a" =~ ^[Yy]$ ]]; }
 
-TARGETS=("$HOME/.zsh_history" "$HOME/.bash_history" "$HOME/.zhistory")
+TARGETS=(
+  "$HOME/.zsh_history" "$HOME/.bash_history" "$HOME/.zhistory"
+  "$HOME/.local/share/fish/fish_history" "$HOME/.config/fish/fish_history"
+  "$HOME/.sh_history" "$HOME/.ksh_history" "$HOME/.history" "$HOME/.csh_history"
+  "$HOME/.config/nushell/history.txt" "$HOME/.local/share/ion/history"
+)
 # Terminal saves a per-window copy of the history here
 shopt -s nullglob
 TARGETS+=("$HOME"/.zsh_sessions/*.history "$HOME"/.zsh_sessions/*.historynew)

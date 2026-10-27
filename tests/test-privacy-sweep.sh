@@ -22,7 +22,7 @@ if ! command -v shellcheck >/dev/null 2>&1; then
 fi
 while IFS= read -r script; do
   shellcheck -x "$script"
-done < <(find network audit browsers android android-tv linux macos hdd-free-space -name '*.sh' | sort)
+done < <(find network audit browsers android android-tv linux macos hdd-free-space recovery-purge browser-deep cloud-sync persistence memory-residue local-artifacts lib -name '*.sh' | sort)
 # The top-level launcher and the original scripts should still parse.
 shellcheck -x privacy-sweep.sh
 
@@ -317,8 +317,15 @@ fi
 if grep -nE 'Remove-Item|Clear-Content|vssadmin[[:space:]]+delete|cipher[[:space:]]+/w' audit/*.ps1; then
   fail "audit powershell deletes or wipes"
 fi
-if grep -R -nE 'vssadmin[[:space:]]+delete|deletelocalsnapshots|delete[[:space:]]+shadows' audit hdd-free-space docs README.md SECURITY.md; then
-  fail "recovery purge command leaked into this change"
+if grep -R -nE 'vssadmin[[:space:]]+delete|deletelocalsnapshots|delete[[:space:]]+shadows' \
+  audit hdd-free-space \
+  linux/clear-all.sh macos/clear-all.sh windows/clear-all.ps1 \
+  privacy-sweep.sh privacy-sweep.ps1; then
+  fail "recovery purge command is on the default sweep path"
+fi
+if grep -nE 'recovery-purge|browser-deep|memory-residue|local-artifacts|purge-vss|clear-browser-deep' \
+  linux/clear-all.sh macos/clear-all.sh windows/clear-all.ps1; then
+  fail "clear-all references an opt-in module"
 fi
 if grep -nE 'hdd-free-space|wipe-linux|wipe-windows|cipher /w' \
   privacy-sweep.sh privacy-sweep.ps1 \
@@ -431,6 +438,11 @@ printf '%s\n' "$tv" | grep -q "FLAG  com.google.android.feedback" || fail "feedb
 printf '%s\n' "$tv" | grep -q "FLAG  com.google.android.tvrecommendations" || fail "content row was not flagged"
 printf '%s\n' "$tv" | grep -q "off   com.amazon.tv.acr" || fail "disabled ACR package was not marked off"
 printf '%s\n' "$tv" | grep -q "off   com.google.android.adservices.api" || fail "disabled ad package was not marked off"
+printf '%s\n' 'package:com.google.android.apps.wellbeing' >> "$tvfix/shell_pm_list_packages"
+tv="$(PRIVACY_SWEEP_ADB_FIXTURE="$tvfix" bash android-tv/audit-tv.sh --dry-run)"
+printf '%s\n' "$tv" | grep -q "present  com.google.android.apps.wellbeing" || fail "wellbeing package was not reported"
+printf '%s\n' "$tv" | grep -q "absent   com.samsung.android.forest" || fail "forest package was not reported absent"
+printf '%s\n' "$tv" | grep -q "absent   com.google.android.apps.turbo" || fail "turbo package was not reported absent"
 printf '%s\n' "$tv" | grep -q "No packages were disabled" || fail "android-tv report did not say it was read-only"
 if grep -nE 'pm disable|pm uninstall|pm hide|cmd package' android-tv/audit-tv.sh; then
   fail "audit-tv.sh contains a package-changing command"
@@ -719,6 +731,9 @@ printf '%s\n' "$wsim" | grep -q "SIMULATION: no free-space overwrite was perform
 [[ ! -s "$CIPHER_LOG" ]] || fail "simulate invoked cipher: $(cat "$CIPHER_LOG")"
 unset PRIVACY_SWEEP_CIPHER PRIVACY_SWEEP_FREE_BYTES PRIVACY_SWEEP_MEDIA_TYPE \
   VSSADMIN_LOG MANAGEBDE_LOG CIPHER_LOG || true
+
+# shellcheck source=test-modules.sh
+source "$ROOT/tests/test-modules.sh"
 
 echo
 echo "All local checks passed."

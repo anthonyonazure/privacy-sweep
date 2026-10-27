@@ -7,8 +7,12 @@ repo; they do not change what the script does.
 
 This does not wipe Windows Event Logs, the USBSTOR key, macOS Spotlight, or Linux login
 records. [SECURITY.md](../SECURITY.md) still applies. The clear scripts live in the per-OS
-folders and ask before they delete. The Windows audit may need an elevated terminal to read
-Prefetch and USBSTOR; if it cannot, it says so instead of pretending the count is zero.
+folders and ask before they delete. Prefetch often needs an elevated terminal; if it
+cannot be read, the audit says so. USBSTOR device subkeys are ACL'd to
+`NT AUTHORITY\SYSTEM`. An elevated terminal still cannot list them, and the audit
+will not take ownership or change that ACL. A non-interactive logon (SSH or a service)
+often does not load the interactive user's Explorer hive, so UserAssist, ShellBags,
+and Recent can differ from a desktop session.
 
 ```bash
 cd audit

@@ -52,10 +52,13 @@ Run everything with no prompts:
   audit script reports that those stores are present and does not delete them. Reducing what gets
   written is a Group Policy job, not a delete script.
 - **Search index (Windows.edb / Windows.db), pagefile, hiberfil, crash dumps, and Volume Shadow
-  Copies.** The clear scripts do not delete these. The audit reports presence, size, or
+  Copies.** `clear-all` does not delete these. The audit reports presence, size, or
   shadow-copy counts and does not read their contents. Removing shadow copies deletes
-  Previous Versions and restore points; that step is not part of this tool. Turning
-  hibernation off (`powercfg /h off`) is a separate Windows setting, not a sweep.
+  Previous Versions and restore points. That step is
+  [../recovery-purge/purge-vss.ps1](../recovery-purge/purge-vss.ps1): `-PurgeVss` and
+  `-Apply`, plus the phrase `DELETE SHADOW COPIES`. It is not part of `clear-all`.
+  Hibernation and pagefile clearing are
+  [../memory-residue/memory-windows.ps1](../memory-residue/memory-windows.ps1), also opt-in.
 
 ## Other scripts (not part of `clear-all`)
 

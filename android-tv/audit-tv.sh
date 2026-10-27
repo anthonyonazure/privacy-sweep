@@ -229,4 +229,16 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 done < "$CATALOGUE"
 echo "Catalogue names not installed on this TV: $absent of $total"
 echo
+
+echo "-- Digital Wellbeing and usage-stats packages (report only) --"
+echo "Presence only. Packages are not disabled. Usage events are not printed."
+for pkg in com.google.android.apps.wellbeing com.samsung.android.forest com.google.android.apps.turbo; do
+  if listed "$pkg" "$installed"; then
+    echo "  present  $pkg"
+  else
+    echo "  absent   $pkg"
+  fi
+done
+echo
+
 echo "Done. No packages were disabled, hidden, or removed."

@@ -26,6 +26,19 @@ that actually move the needle.
 | Analytics data | Diagnostic logs | Settings > Privacy & Security > Analytics & Improvements > turn off Share iPhone Analytics |
 | Per-app caches | Downloaded/cached content | Delete and reinstall the app, or use its in-app "clear cache" if it has one |
 
+## Desktop FOSS cannot replace a mobile acquisition
+
+A program running on a Mac, a Windows PC, or a Linux box cannot read an iPhone's app
+sandbox. There is no honest "point the script at the phone" step in this repository, and
+there will not be one that describes an exploit or a jailbreak. The table above is the
+whole tool: Settings on the device, done by the person who knows the passcode.
+
+What a desktop examiner still has, without the phone, is the copy that already left the
+device: an iCloud backup, a Finder or Apple Devices backup on a computer you unlocked,
+and whatever Photos or Messages already synced. Deleting the phone's local cache does not
+delete those. Sign out of iCloud and review the account's device list on a browser if
+you are retiring the phone. That is account hygiene, not a filesystem wipe.
+
 ## The two that matter most
 
 - **Set a 6-digit-or-longer passcode** (Settings > Face ID & Passcode > Change Passcode > Passcode

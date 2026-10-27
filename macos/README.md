@@ -55,10 +55,11 @@ Run everything without prompts:
   reports presence and size only and does not delete them.
 - **Keychain.** Your saved passwords. Clearing it would lock you out of Wi-Fi and apps. Manage it in
   the Passwords app instead.
-- **APFS snapshots, local Time Machine snapshots, and Document Revisions.** The clear scripts
-  do not delete these. The audit reports whether they are present and does not remove them.
-  Deleting them destroys local backups and previous versions of documents, so that step is
-  not part of privacy-sweep. See [docs/leave-no-trace.md](../docs/leave-no-trace.md).
+- **APFS snapshots, local Time Machine snapshots, and Document Revisions.** `clear-all`
+  does not delete these. The audit reports whether they are present. The opt-in tool is
+  [../recovery-purge/purge-macos.sh](../recovery-purge/purge-macos.sh): dry-run unless
+  `--apply`, plus a typed phrase. It is not part of `clear-all`. See
+  [docs/leave-no-trace.md](../docs/leave-no-trace.md).
 
 ## Manual step scripts can't do well
 

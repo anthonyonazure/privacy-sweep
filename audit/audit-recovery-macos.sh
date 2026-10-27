@@ -23,8 +23,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/report-lib.sh"
 
 FIXTURE="${PRIVACY_SWEEP_RECOVERY_ROOT:-}"
-if [[ -z "$FIXTURE" && "$(uname -s)" != "Darwin" ]]; then
-  echo "This report is for macOS. Detected: $(uname -s)." >&2
+OS_NAME="${PRIVACY_SWEEP_OS:-$(uname -s)}"
+if [[ -z "$FIXTURE" && "$OS_NAME" != "Darwin" ]]; then
+  echo "This report is for macOS. Detected: $OS_NAME." >&2
   exit 1
 fi
 

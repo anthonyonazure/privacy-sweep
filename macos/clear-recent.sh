@@ -19,13 +19,15 @@ SFL="$HOME/Library/Application Support/com.apple.sharedfilelist"
 
 echo "== Recent items (documents, apps, servers) =="
 if [[ ! -d "$SFL" ]]; then echo "No recent-items store found. Nothing to do."; exit 0; fi
-FILES=$(find "$SFL" -type f \( -name "*.sfl*" -o -name "*.plist" \) 2>/dev/null | wc -l | tr -d ' ')
+# find returns non-zero on an unreadable entry (TCC-protected folders). With
+# set -o pipefail that must not abort a dry run. The count can be short.
+FILES=$(find "$SFL" -type f \( -name "*.sfl*" -o -name "*.plist" \) 2>/dev/null | wc -l | tr -d ' ' || true)
 echo "Target: $SFL"
 echo "Recent-list files found: $FILES"
 
 if $DRY_RUN; then
   echo "(dry run) Would delete these lists:"
-  find "$SFL" -type f \( -name "*.sfl*" -o -name "*.plist" \) 2>/dev/null | sed 's/^/  /'
+  find "$SFL" -type f \( -name "*.sfl*" -o -name "*.plist" \) 2>/dev/null | sed 's/^/  /' || true
   echo "Would then restart Finder and Dock to apply."
   exit 0
 fi

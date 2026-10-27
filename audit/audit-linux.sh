@@ -56,8 +56,8 @@ echo "-- Thumbnail cache --"
 THUMBS="${XDG_CACHE_HOME:-$HOME/.cache}/thumbnails"
 echo "Path: $THUMBS"
 if [[ -d "$THUMBS" ]]; then
-  COUNT="$(find "$THUMBS" -type f 2>/dev/null | wc -l | tr -d ' ')"
-  SIZE="$(du -sh "$THUMBS" 2>/dev/null | cut -f1)"
+  COUNT="$(find "$THUMBS" -type f 2>/dev/null | wc -l | tr -d ' ' || true)"
+  SIZE="$(du -sh "$THUMBS" 2>/dev/null | cut -f1 || true)"
   echo "Files: $COUNT"
   echo "Size: ${SIZE:-unknown}"
   echo "Subdirectories:"
@@ -83,14 +83,18 @@ done
 RECENT_DIR="$DATA/RecentDocuments"
 echo "Path: $RECENT_DIR"
 if [[ -d "$RECENT_DIR" ]]; then
-  echo "Files: $(find "$RECENT_DIR" -type f 2>/dev/null | wc -l | tr -d ' ')"
+  echo "Files: $(find "$RECENT_DIR" -type f 2>/dev/null | wc -l | tr -d ' ' || true)"
 else
   echo "Files: 0 (not present)"
 fi
 echo
 
 echo "-- Shell and tool history (line counts only) --"
-for target in "$HOME/.bash_history" "$HOME/.zsh_history" "$HOME/.viminfo" "$HOME/.lesshst" "$HOME/.python_history"; do
+for target in \
+  "$HOME/.bash_history" "$HOME/.zsh_history" "$HOME/.viminfo" "$HOME/.lesshst" "$HOME/.python_history" \
+  "$HOME/.local/share/fish/fish_history" "$HOME/.config/fish/fish_history" \
+  "$HOME/.sh_history" "$HOME/.ksh_history" "$HOME/.history" "$HOME/.csh_history" \
+  "$HOME/.config/nushell/history.txt" "$HOME/.local/share/ion/history"; do
   report_file "$(basename "$target")" "$target"
 done
 
@@ -229,5 +233,7 @@ echo "Screenshot folders, journal size, login-record sizes, and crontab presence
 echo "are reported above. Swap, LUKS status, and wipe-tool remnant names are too."
 echo "File contents, journal messages, who logged in, and crontab commands are not printed."
 echo "Nothing in this audit is deleted. This report does not edit login records or the journal."
-echo "Snapshot and shadow-copy purge is not part of this tool. See docs/leave-no-trace.md."
-echo "See SECURITY.md. The clear-* scripts are separate and ask before deleting."
+echo "Audit only: counts, sizes, and paths. Contents, passwords, message bodies, and row values are not printed."
+echo "Nothing was deleted."
+echo "Opt-in snapshot purge, browser-deep, and memory actions are separate tools and are not part of clear-all."
+echo "See SECURITY.md and docs/leave-no-trace.md."

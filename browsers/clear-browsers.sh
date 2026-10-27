@@ -173,7 +173,7 @@ describe() {
     return 0
   fi
   local size
-  size="$(du -sh "$path" 2>/dev/null | cut -f1)"
+  size="$(du -sh "$path" 2>/dev/null | cut -f1 || true)"
   echo "  $path  (${size:-unknown})"
 }
 

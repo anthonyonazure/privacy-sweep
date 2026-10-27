@@ -48,6 +48,7 @@ report_dir_summary() {
     echo
     return 0
   fi
+  # find's non-zero status on an unreadable directory must not abort the caller.
   files="$(find -P "$path" -type f 2>/dev/null | wc -l | tr -d ' ' || true)"
   size="$(du -sk "$path" 2>/dev/null | awk '{print $1}' || true)"
   echo "Present: yes"

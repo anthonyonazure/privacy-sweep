@@ -71,13 +71,28 @@ paths inside those files), pagefile/hiberfil/MEMORY.DMP and sleepimage/swap pres
 size, Windows Search index size, thumbcache database counts, wipe-tool remnant **names**,
 and FileVault/BitLocker/LUKS **status**. They do not delete any of those, and they do not
 print Wi-Fi passwords, encryption keys, or file contents. **Purging shadow copies, local
-snapshots, or Document Revisions is not in this repository.** That would destroy backups
-and Previous Versions. It is left for a later opt-in tool, and it will not be added to
-`clear-all`.
+snapshots, or Document Revisions is opt-in, in [recovery-purge/](recovery-purge/).**
+Each store has its own flag. A dry run is the default. A typed phrase is required
+before a delete. `--yes` does not delete. That step destroys backups and Previous
+Versions, and it is not part of `clear-all`.
 
-`hdd-free-space/` is opt-in and off by default. Nothing in `privacy-sweep.sh` or the
-`clear-all` scripts calls it. A free-space fill does not clear shadow copies or snapshots.
-See [docs/leave-no-trace.md](docs/leave-no-trace.md).
+`hdd-free-space/` is opt-in and off by default. The default launcher and the
+`clear-all` scripts do not call it. `./privacy-sweep.sh --dry-run --all-modules` and
+`.\privacy-sweep.ps1 -DryRun -AllModules` dry-run it and do not pass an apply flag.
+A free-space fill does not clear shadow copies or snapshots. On an SSD the Windows
+tool still refuses (exit 2) unless you override it yourself. See
+[docs/leave-no-trace.md](docs/leave-no-trace.md),
+[docs/reduce-future-logging.md](docs/reduce-future-logging.md), and
+[docs/anti-forensics.md](docs/anti-forensics.md).
+
+Event Log clearing is not the default. The only script path is
+`local-artifacts/clear-local.ps1 -ClearEventLogs`, which prints a warning that it
+breaks incident response, requires the phrase `CLEAR EVENT LOGS`, and is excluded
+from `-AllOptIn` and from `clear-all`. USBSTOR is not deleted. Its device subkeys
+are ACL'd to `NT AUTHORITY\SYSTEM`; an elevated terminal still cannot list them, and
+this repo will not take ownership of that key. Keychain and password-vault
+extraction stay out of scope. Login records (`utmp`, `wtmp`, `btmp`, `lastlog`) stay
+audit-only.
 
 Forgetting a saved Wi-Fi network, and clearing browser cookies, are opt-in. They are not part
 of `clear-all`. The Wi-Fi scripts leave the network you are joined to alone unless you pass
