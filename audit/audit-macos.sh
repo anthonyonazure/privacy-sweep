@@ -4,6 +4,8 @@
 # at first: the download quarantine log, recent items, the Quick Look cache,
 # and shell history.
 # It does not delete anything and it does not print the contents of those stores.
+# It also reports local snapshots, Document Revisions size, external Trash
+# counts, sleepimage/swap presence, and FileVault on/off.
 #
 #   ./audit-macos.sh
 #   ./audit-macos.sh --dry-run     # same report; there is nothing to apply
@@ -11,6 +13,8 @@
 #
 # Spotlight, unified logs, knowledgeC, and the keychain are not read.
 set -euo pipefail
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 for arg in "$@"; do
   case "$arg" in
@@ -84,6 +88,10 @@ else
     fi
   done
 fi
-echo
+bash "$DIR/audit-recovery-macos.sh" "$@"
+
+echo "Local snapshots, Document Revisions, external Trash, sleepimage/swap,"
+echo "and FileVault on/off are reported above. They are not deleted."
 echo "Not included, and not cleared by this tool: Spotlight, the unified log,"
 echo "knowledgeC, Biome, and the keychain. See SECURITY.md."
+echo "knowledgeC and Biome are not read. See docs/leave-no-trace.md."

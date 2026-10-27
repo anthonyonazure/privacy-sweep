@@ -1,12 +1,15 @@
 <#
 .SYNOPSIS
   Report-only inventory of Windows stores a forensic examiner would look at
-  first: Prefetch, Jump Lists, USBSTOR, recent items, and saved Wi-Fi profiles.
+  first: Prefetch, Jump Lists, USBSTOR, recent items, saved Wi-Fi profiles,
+  and recovery structures (shadow copies, Recycle Bin metadata counts,
+  pagefile/hiberfil/MEMORY.DMP, the search index, thumbcache databases,
+  wipe-tool remnant names, BitLocker protection status).
 .NOTES
   part of privacy-sweep (Windows). Prints counts and paths. Deletes nothing.
   Does not read Event Logs, SRUM, Amcache, or ShimCache, and does not print
-  Wi-Fi passwords. -DryRun and -Yes exist so the flag style matches the other
-  scripts; both print the same report.
+  Wi-Fi passwords, $I file contents, or BitLocker keys. -DryRun and -Yes
+  exist so the flag style matches the other scripts; both print the same report.
 #>
 param([switch]$DryRun, [switch]$Yes)
 
@@ -84,5 +87,9 @@ if (-not $netsh) {
   Write-Host "Passwords are not requested. Do not add 'key=clear' to this command."
 }
 Write-Host ""
+& (Join-Path $PSScriptRoot 'audit-recovery-windows.ps1')
+Write-Host ""
+Write-Host "Shadow copies and the other recovery structures above are reported only."
+Write-Host "This script does not delete them. Purging restore points is not part of this tool."
 Write-Host "Not included, and not cleared by this tool: Event Logs, SRUM, Amcache,"
 Write-Host "ShimCache, and the rest of the Registry. See SECURITY.md."

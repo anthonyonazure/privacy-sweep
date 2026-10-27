@@ -9,8 +9,11 @@
 #   ./audit-linux.sh --dry-run     # same report; there is nothing to apply
 #   ./audit-linux.sh --yes         # same report
 #
+# Also reports swap, LUKS status (no keys), and wipe-tool remnant names.
 # Login records (utmp, wtmp, btmp, lastlog) are out of scope, on purpose.
 set -euo pipefail
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 for arg in "$@"; do
   case "$arg" in
@@ -89,6 +92,11 @@ for target in "$HOME/.bash_history" "$HOME/.zsh_history" "$HOME/.viminfo" "$HOME
   report_file "$(basename "$target")" "$target"
 done
 
+bash "$DIR/audit-recovery-linux.sh" "$@"
+
+echo "Swap, LUKS status, and wipe-tool remnant names are reported above."
+echo "Nothing in this audit is deleted. Snapshot and shadow-copy purge is not"
+echo "part of this tool. See docs/leave-no-trace.md."
 echo "Not included, and not cleared by this tool: utmp, wtmp, btmp, lastlog,"
 echo "the systemd journal, and other logs under /var/log."
 echo "See SECURITY.md. The clear-* scripts are separate and ask before deleting."

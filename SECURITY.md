@@ -28,9 +28,14 @@ your own device**. It is a privacy-hygiene tool, the same category as the built-
   deliberately leave system internals alone (Windows Registry and Event Logs, macOS Spotlight and
   system databases, Linux login records) because editing those risks breaking the machine and
   crosses out of privacy hygiene.
-- **These scripts do not securely overwrite data.** They clear the stores; they do not scrub free
-  space or guarantee unrecoverability. For that, and for the only protection that covers every store
-  at once, use full-disk encryption: FileVault, BitLocker, LUKS, or a phone's built-in encryption.
+- **The default scripts do not securely overwrite data.** `clear-all` and `privacy-sweep.sh` clear
+  named stores. They do not scrub free space, and they do not guarantee unrecoverability. The
+  opt-in `hdd-free-space/` module can fill free space on a hard disk. It is not part of
+  `clear-all`. It refuses SSDs unless you pass a flag that acknowledges the fill will not
+  reliably erase an SSD. It does not remove shadow copies or snapshots.
+- For the protection that covers every store at once, use full-disk encryption: FileVault,
+  BitLocker, LUKS, or a phone's built-in encryption. When you retire a drive, destroying that
+  key (or the drive vendor's erase) is the honest step. This repo will not destroy a key for you.
 
 ## Network, browsers, and the audit report
 
@@ -53,6 +58,20 @@ hide, or uninstall packages, and it is not part of `clear-all`. They do not wipe
 Event Logs, the USBSTOR registry key, macOS Spotlight, Linux login records, or anything else
 this file already puts out of scope. An audit printout is itself sensitive (program names,
 network names, installed packages). Keep it to yourself.
+
+The same audits also **report** recovery structures: Volume Shadow Copy counts, APFS local
+snapshot names, Document Revisions size, Recycle Bin `$I`/`$R` counts (not the original
+paths inside those files), pagefile/hiberfil/MEMORY.DMP and sleepimage/swap presence and
+size, Windows Search index size, thumbcache database counts, wipe-tool remnant **names**,
+and FileVault/BitLocker/LUKS **status**. They do not delete any of those, and they do not
+print Wi-Fi passwords, encryption keys, or file contents. **Purging shadow copies, local
+snapshots, or Document Revisions is not in this repository.** That would destroy backups
+and Previous Versions. It is left for a later opt-in tool, and it will not be added to
+`clear-all`.
+
+`hdd-free-space/` is opt-in and off by default. Nothing in `privacy-sweep.sh` or the
+`clear-all` scripts calls it. A free-space fill does not clear shadow copies or snapshots.
+See [docs/leave-no-trace.md](docs/leave-no-trace.md).
 
 Forgetting a saved Wi-Fi network, and clearing browser cookies, are opt-in. They are not part
 of `clear-all`. The Wi-Fi scripts leave the network you are joined to alone unless you pass

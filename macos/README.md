@@ -44,7 +44,7 @@ Run everything without prompts:
 | Script | What it does |
 | --- | --- |
 | [forget-wifi.sh](forget-wifi.sh) | Lists preferred Wi-Fi networks and removes them. Keeps the one you are joined to unless you pass `--include-current`. |
-| [../audit/audit-macos.sh](../audit/audit-macos.sh) | Report only: quarantine log, recent items, Quick Look, shell history. Counts and paths. |
+| [../audit/audit-macos.sh](../audit/audit-macos.sh) | Report only: quarantine log, recent items, Quick Look, shell history, local snapshots, Document Revisions size, FileVault on/off. Counts and paths. Deletes nothing. |
 | [../browsers/clear-browsers.sh](../browsers/clear-browsers.sh) | History, cookies, and cache, including Safari. Quits if that browser is open. |
 
 ## What these scripts deliberately do NOT touch
@@ -54,8 +54,10 @@ Run everything without prompts:
   breaking Spotlight or Screen Time. There is no safe user-space script for them.
 - **Keychain.** Your saved passwords. Clearing it would lock you out of Wi-Fi and apps. Manage it in
   the Passwords app instead.
-- **APFS snapshots and Time Machine.** Managed with `tmutil`; out of scope here so a stray run can't
-  destroy your backups.
+- **APFS snapshots, local Time Machine snapshots, and Document Revisions.** The clear scripts
+  do not delete these. The audit reports whether they are present and does not remove them.
+  Deleting them destroys local backups and previous versions of documents, so that step is
+  not part of privacy-sweep. See [docs/leave-no-trace.md](../docs/leave-no-trace.md).
 
 ## Manual step scripts can't do well
 

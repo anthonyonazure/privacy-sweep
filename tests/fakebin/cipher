@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Stand-in for cipher.exe. Logs arguments and does not write a fill.
+if [[ -n "${CIPHER_LOG:-}" ]]; then
+  printf '%s\n' "$*" >> "$CIPHER_LOG"
+fi
+exit 0

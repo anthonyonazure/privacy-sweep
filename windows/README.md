@@ -49,15 +49,19 @@ Run everything with no prompts:
   editing them by hand risks breaking the system, and wiping Event Logs is a maintenance and
   security concern rather than privacy hygiene. Reducing what gets written is a Group Policy job,
   not a delete script.
-- **Search index (Windows.edb), pagefile, hiberfil.** Managed by Windows. Turn hibernation off with
-  `powercfg /h off` if you want the hiberfil gone; that is a deliberate setting, not a sweep.
+- **Search index (Windows.edb / Windows.db), pagefile, hiberfil, crash dumps, and Volume Shadow
+  Copies.** The clear scripts do not delete these. The audit reports presence, size, or
+  shadow-copy counts and does not read their contents. Removing shadow copies deletes
+  Previous Versions and restore points; that step is not part of this tool. Turning
+  hibernation off (`powercfg /h off`) is a separate Windows setting, not a sweep.
 
 ## Other scripts (not part of `clear-all`)
 
 | Script | What it does |
 | --- | --- |
 | [forget-wifi.ps1](forget-wifi.ps1) | Lists saved Wi-Fi profiles and deletes them with `netsh`. Keeps the one you are joined to unless you pass `-IncludeCurrent`. Does not print the password. |
-| [../audit/audit-windows.ps1](../audit/audit-windows.ps1) | Report only: Prefetch, Jump Lists, USBSTOR, recent items, Wi-Fi profile names. |
+| [../audit/audit-windows.ps1](../audit/audit-windows.ps1) | Report only: Prefetch, Jump Lists, USBSTOR, recent items, Wi-Fi profile names, shadow copies, Recycle Bin metadata counts, pagefile/hiberfil/MEMORY.DMP, search index, BitLocker status. |
+| [../hdd-free-space/wipe-windows.ps1](../hdd-free-space/wipe-windows.ps1) | Opt-in `cipher /w` for a hard disk. Not part of `clear-all`. Refuses SSDs unless you override. |
 | [../browsers/clear-browsers.ps1](../browsers/clear-browsers.ps1) | History, cookies, and cache for Chrome, Edge, Firefox, and Brave. Refuses a browser that is still open. |
 
 ## Wi-Fi profile names

@@ -22,7 +22,7 @@ if ! command -v shellcheck >/dev/null 2>&1; then
 fi
 while IFS= read -r script; do
   shellcheck -x "$script"
-done < <(find network audit browsers android android-tv linux macos -name '*.sh' | sort)
+done < <(find network audit browsers android android-tv linux macos hdd-free-space -name '*.sh' | sort)
 # The top-level launcher and the original scripts should still parse.
 shellcheck -x privacy-sweep.sh
 
@@ -310,16 +310,31 @@ grep -q "HomeWifi" "$NMCLI_LOG" || fail "include-current did not forget the acti
 unset NMCLI_LOG
 
 echo "== audit is report-only =="
-if grep -nE '(^|[^a-zA-Z])(rm|shred|wipe)([^a-zA-Z]|$)' audit/*.sh; then
+# User-facing text may name wipe tools. Fail on actual delete/overwrite commands.
+if grep -nE '(^|[;&|`(]|\$\()[[:space:]]*(sudo[[:space:]]+)?(rm|rmdir|shred|wipefs|dd)[[:space:]]' audit/*.sh; then
   fail "audit shell scripts contain a delete command"
+fi
+if grep -nE 'Remove-Item|Clear-Content|vssadmin[[:space:]]+delete|cipher[[:space:]]+/w' audit/*.ps1; then
+  fail "audit powershell deletes or wipes"
+fi
+if grep -R -nE 'vssadmin[[:space:]]+delete|deletelocalsnapshots|delete[[:space:]]+shadows' audit hdd-free-space docs README.md SECURITY.md; then
+  fail "recovery purge command leaked into this change"
+fi
+if grep -nE 'hdd-free-space|wipe-linux|wipe-windows|cipher /w' \
+  privacy-sweep.sh privacy-sweep.ps1 \
+  linux/clear-all.sh macos/clear-all.sh windows/clear-all.ps1; then
+  fail "free-space wipe is on a default clear path"
 fi
 sentinel="$HOME/.privacy-sweep-audit-sentinel"
 printf 'keep\n' > "$sentinel"
 before="$(stat -c %Y "$sentinel")"
-bash audit/audit-linux.sh >/dev/null
+live_audit="$(bash audit/audit-linux.sh)"
 after="$(stat -c %Y "$sentinel")"
 [[ "$before" == "$after" ]] || fail "audit changed a file"
 rm -f "$sentinel"
+printf '%s\n' "$live_audit" | grep -q "Swap entries" || fail "linux audit missed swap"
+printf '%s\n' "$live_audit" | grep -q "LUKS" || fail "linux audit missed LUKS"
+printf '%s\n' "$live_audit" | grep -q "Wipe-tool remnants" || fail "linux audit missed remnant scan"
 bash audit/audit.sh --dry-run >/dev/null
 bash audit/audit-macos.sh >/dev/null && fail "macOS audit ran on Linux" || true
 status=0
@@ -377,6 +392,287 @@ fi
 if grep -n 'audit-tv' privacy-sweep.sh linux/clear-all.sh macos/clear-all.sh; then
   fail "audit-tv.sh is referenced by a clear-all path"
 fi
+
+echo "== media type =="
+# shellcheck source=../hdd-free-space/media-type.sh
+source "$ROOT/hdd-free-space/media-type.sh"
+[[ "$(disk_from_name /dev/sda1)" == "sda" ]] || fail "sda1 did not map to sda"
+[[ "$(disk_from_name nvme0n1p3)" == "nvme0n1" ]] || fail "nvme partition did not map to the disk"
+[[ "$(disk_from_name nvme0n1)" == "nvme0n1" ]] || fail "nvme disk name was rewritten"
+[[ "$(disk_from_name mmcblk0p1)" == "mmcblk0" ]] || fail "mmc partition did not map to the disk"
+sysblock="$TMP/sysblock"
+mkdir -p "$sysblock/sda/queue" "$sysblock/nvme0n1/queue" "$sysblock/mystery/queue"
+printf '1\n' > "$sysblock/sda/queue/rotational"
+printf '0\n' > "$sysblock/nvme0n1/queue/rotational"
+printf 'x\n' > "$sysblock/mystery/queue/rotational"
+PRIVACY_SWEEP_SYS_BLOCK="$sysblock"
+set_media_kind_for_disk sda
+[[ "$MEDIA_KIND" == "hdd" ]] || fail "sda was not an hdd ($MEDIA_KIND)"
+set_media_kind_for_disk nvme0n1
+[[ "$MEDIA_KIND" == "ssd" ]] || fail "nvme was not an ssd ($MEDIA_KIND)"
+set_media_kind_for_disk mystery
+[[ "$MEDIA_KIND" == "unknown" ]] || fail "bad rotational flag was not unknown"
+set_media_kind_for_disk missing
+[[ "$MEDIA_KIND" == "unknown" ]] || fail "missing disk was not unknown"
+unset PRIVACY_SWEEP_SYS_BLOCK MEDIA_KIND MEDIA_REASON
+
+echo "== remnant name scan =="
+rem="$TMP/remnants"
+mkdir -p "$rem/EFSTMPWP" "$rem/!FSTMPWP" "$rem/privacy-sweep-free-space-fill" "$rem/sub/deep/EFSTMPWP"
+printf 'SECRET-BYTES\n' > "$rem/EFSTMPWP/payload"
+printf 'SECRET-Z\n' > "$rem/zzzzzzzz.txt"
+printf 'Z\n' > "$rem/ZZZZZZZZ.dat"
+printf 'short\n' > "$rem/zzzzzzz.txt"
+printf 'notes\n' > "$rem/notes.txt"
+printf 'nope\n' > "$rem/not-EFSTMPWP"
+: > "$rem/SDELTEMP"
+scan="$(bash audit/scan-remnants.sh --root "$rem" --max-depth 2)"
+printf '%s\n' "$scan" | grep -q "Count: 6" || fail "remnant count was wrong: $scan"
+printf '%s\n' "$scan" | grep -q "EFSTMPWP" || fail "EFSTMPWP missing"
+printf '%s\n' "$scan" | grep -F -q '!FSTMPWP' || fail "!FSTMPWP missing"
+printf '%s\n' "$scan" | grep -q "SDELTEMP" || fail "SDELTEMP missing"
+printf '%s\n' "$scan" | grep -q "zzzzzzzz.txt" || fail "eight-z name missing"
+printf '%s\n' "$scan" | grep -q "ZZZZZZZZ.dat" || fail "upper-case z name missing"
+printf '%s\n' "$scan" | grep -q "privacy-sweep-free-space-fill" || fail "fill directory missing"
+if printf '%s\n' "$scan" | grep -q 'SECRET-BYTES\|SECRET-Z\|/notes.txt\|/not-EFSTMPWP\|/zzzzzzz.txt\|/sub/deep'; then
+  fail "remnant scan leaked contents or a non-match: $scan"
+fi
+
+echo "== linux recovery fixture =="
+lfix="$TMP/linux-recovery"
+mkdir -p "$lfix/proc" "$lfix/etc" "$lfix/EFSTMPWP"
+printf 'SECRET-SWAP\n' > "$lfix/swapfile"
+cat > "$lfix/proc/swaps" << EOF
+Filename				Type		Size		Used		Priority
+$lfix/swapfile                               file		4096		0		-2
+EOF
+cp "$ROOT/tests/fixtures/recovery/crypttab" "$lfix/etc/crypttab"
+cp "$ROOT/tests/fixtures/recovery/lsblk-crypt.txt" "$lfix/lsblk-crypt.txt"
+cp "$ROOT/tests/fixtures/recovery/cryptsetup-status.txt" "$lfix/cryptsetup-status.txt"
+printf 'SECRET-BYTES\n' > "$lfix/EFSTMPWP/payload"
+lout="$(PRIVACY_SWEEP_RECOVERY_ROOT="$lfix" bash audit/audit-recovery-linux.sh)"
+printf '%s\n' "$lout" | grep -q "crypttab name: cryptroot" || fail "crypttab name missing"
+printf '%s\n' "$lout" | grep -q "Active crypt device: cryptroot" || fail "mapper name missing"
+printf '%s\n' "$lout" | grep -q "LUKS2" || fail "LUKS type missing"
+printf '%s\n' "$lout" | grep -q "aes-xts-plain64" || fail "cipher missing"
+printf '%s\n' "$lout" | grep -q "/dev/sda2" || fail "LUKS device missing"
+printf '%s\n' "$lout" | grep -q "Swap entries: 1" || fail "swap entry missing"
+printf '%s\n' "$lout" | grep -q "$lfix/swapfile" || fail "swap path missing"
+printf '%s\n' "$lout" | grep -q "EFSTMPWP" || fail "linux recovery missed a remnant"
+if printf '%s\n' "$lout" | grep -q 'should-not-print-keyfile\|SUPERSECRETKEY\|keyring\|SECRET-SWAP\|SECRET-BYTES'; then
+  fail "linux recovery printed a key or file contents: $lout"
+fi
+unset PRIVACY_SWEEP_RECOVERY_ROOT
+
+echo "== macOS recovery fixture =="
+status=0
+bash audit/audit-recovery-macos.sh >/dev/null 2>&1 || status=$?
+[[ "$status" -eq 1 ]] || fail "macOS recovery should refuse Linux without a fixture (status $status)"
+mfix="$TMP/macos-recovery"
+mkdir -p "$mfix/Users/tester/.DocumentRevisions-V100" \
+  "$mfix/Volumes/Backup/.Trashes/501" \
+  "$mfix/private/var/vm" \
+  "$mfix/EFSTMPWP"
+printf 'SECRET-DOC\n' > "$mfix/Users/tester/.DocumentRevisions-V100/Secret Diary.txt"
+printf 'x\n' > "$mfix/Volumes/Backup/.Trashes/501/deleted-secret.pdf"
+printf 'SECRET-SLEEP\n' > "$mfix/private/var/vm/sleepimage"
+printf 'SECRET-SWAPFILE\n' > "$mfix/private/var/vm/swapfile0"
+printf 'SECRET-BYTES\n' > "$mfix/EFSTMPWP/payload"
+export TMUTIL_LOG="$TMP/tmutil.log"
+export FDESETUP_LOG="$TMP/fdesetup.log"
+: > "$TMUTIL_LOG"
+: > "$FDESETUP_LOG"
+mout="$(PRIVACY_SWEEP_RECOVERY_ROOT="$mfix" bash audit/audit-recovery-macos.sh)"
+printf '%s\n' "$mout" | grep -q "Local snapshot count: 1" || fail "snapshot count missing: $mout"
+printf '%s\n' "$mout" | grep -q "com.apple.TimeMachine.2026-10-01-120000.local" || fail "snapshot name missing"
+printf '%s\n' "$mout" | grep -q "2026-10-01-120000" || fail "snapshot date missing"
+printf '%s\n' "$mout" | grep -q "FileVault is On." || fail "FileVault status missing"
+printf '%s\n' "$mout" | grep -q "Files: 1" || fail "Document Revisions count missing"
+printf '%s\n' "$mout" | grep -q ".DocumentRevisions-V100" || fail "Document Revisions path missing"
+printf '%s\n' "$mout" | grep -q ".Trashes" || fail "external Trash path missing"
+printf '%s\n' "$mout" | grep -q "sleepimage" || fail "sleepimage path missing"
+printf '%s\n' "$mout" | grep -q "Present: yes" || fail "sleepimage was not present"
+grep -q "listlocalsnapshots /" "$TMUTIL_LOG" || fail "tmutil listlocalsnapshots was not called"
+grep -q "listlocalsnapshotdates /" "$TMUTIL_LOG" || fail "tmutil listlocalsnapshotdates was not called"
+if grep -q 'delete' "$TMUTIL_LOG"; then
+  fail "tmutil was asked to delete: $(cat "$TMUTIL_LOG")"
+fi
+grep -q '^status$' "$FDESETUP_LOG" || fail "fdesetup status was not called"
+if printf '%s\n' "$mout" | grep -q 'ABCD-EFGH\|SECRET-DOC\|Secret Diary\|deleted-secret\|SECRET-SLEEP\|SECRET-SWAPFILE\|SECRET-BYTES'; then
+  fail "macOS recovery printed a secret or a document name: $mout"
+fi
+unset TMUTIL_LOG FDESETUP_LOG PRIVACY_SWEEP_RECOVERY_ROOT
+
+echo "== hdd free-space decisions =="
+vol="$TMP/vol"
+mkdir -p "$vol"
+printf 'keep\n' > "$vol/keep.txt"
+chmod +x "$ROOT/tests/fakebin/cipher" "$ROOT/tests/fakebin/vssadmin" "$ROOT/tests/fakebin/manage-bde" \
+  "$ROOT/tests/fakebin/tmutil" "$ROOT/tests/fakebin/fdesetup" \
+  "$ROOT/hdd-free-space/"*.sh "$ROOT/audit/"*.sh
+common_env=(
+  PRIVACY_SWEEP_SYS_BLOCK="$sysblock"
+  PRIVACY_SWEEP_MOUNT_POINT="$vol"
+  PRIVACY_SWEEP_FREE_BYTES=5000000
+)
+dry="$(env "${common_env[@]}" PRIVACY_SWEEP_BLOCK_DEVICE=sda \
+  bash hdd-free-space/wipe-linux.sh --dry-run --volume "$vol" </dev/null)"
+printf '%s\n' "$dry" | grep -q "Free bytes: 5000000" || fail "dry-run missed free bytes"
+printf '%s\n' "$dry" | grep -q "fill-until-full" || fail "dry-run missed the tool"
+printf '%s\n' "$dry" | grep -q "Media: hdd" || fail "dry-run missed hdd"
+printf '%s\n' "$dry" | grep -q "EFSTMPWP" || fail "dry-run missed the fingerprint warning"
+printf '%s\n' "$dry" | grep -q "does not remove Volume Shadow Copies" || fail "dry-run missed the snapshot note"
+printf '%s\n' "$dry" | grep -q "Dry run: nothing was written." || fail "dry-run did not say it wrote nothing"
+[[ ! -e "$vol/privacy-sweep-free-space-fill" ]] || fail "dry-run created a fill directory"
+[[ -f "$vol/keep.txt" ]] || fail "dry-run removed a user file"
+status=0
+ssd="$(env "${common_env[@]}" PRIVACY_SWEEP_BLOCK_DEVICE=nvme0n1 \
+  bash hdd-free-space/wipe-linux.sh --yes --volume "$vol" </dev/null 2>&1)" || status=$?
+[[ "$status" -eq 2 ]] || fail "SSD fill should refuse (status $status): $ssd"
+printf '%s\n' "$ssd" | grep -q "theater" || fail "SSD refusal missed the theater warning"
+printf '%s\n' "$ssd" | grep -q "Nothing was written." || fail "SSD refusal did not say nothing was written"
+[[ ! -e "$vol/privacy-sweep-free-space-fill" ]] || fail "SSD refusal created a fill directory"
+status=0
+unk="$(env "${common_env[@]}" PRIVACY_SWEEP_BLOCK_DEVICE=nodisk \
+  bash hdd-free-space/wipe-linux.sh --yes --volume "$vol" </dev/null 2>&1)" || status=$?
+[[ "$status" -eq 2 ]] || fail "unknown media should refuse (status $status)"
+cancelled="$(printf 'n\n' | env "${common_env[@]}" PRIVACY_SWEEP_BLOCK_DEVICE=sda \
+  bash hdd-free-space/wipe-linux.sh --volume "$vol")"
+printf '%s\n' "$cancelled" | grep -q "Cancelled. Nothing was written." || fail "answering no did not cancel"
+[[ ! -e "$vol/privacy-sweep-free-space-fill" ]] || fail "answering no created a fill directory"
+mkdir -p "$vol/EFSTMPWP" "$vol/sub/deep/EFSTMPWP"
+printf 'SECRET-REMNANT\n' > "$vol/EFSTMPWP/payload"
+sim="$(env "${common_env[@]}" PRIVACY_SWEEP_BLOCK_DEVICE=sda \
+  bash hdd-free-space/wipe-linux.sh --yes --simulate --volume "$vol" </dev/null)"
+printf '%s\n' "$sim" | grep -q "SIMULATION: no free-space overwrite was performed." || fail "simulate did not say so"
+printf '%s\n' "$sim" | grep -q "EFSTMPWP" || fail "post-scan missed a planted remnant"
+[[ -d "$vol/EFSTMPWP" ]] || fail "simulate deleted a planted remnant"
+[[ ! -e "$vol/privacy-sweep-free-space-fill" ]] || fail "simulate left the fill directory"
+[[ -f "$vol/keep.txt" ]] || fail "simulate removed a user file"
+if printf '%s\n' "$sim" | grep -q 'SECRET-REMNANT\|/sub/deep'; then
+  fail "post-scan leaked contents or a deep path: $sim"
+fi
+override="$(env "${common_env[@]}" PRIVACY_SWEEP_BLOCK_DEVICE=nvme0n1 \
+  bash hdd-free-space/wipe-linux.sh --dry-run --i-know-this-is-ssd --volume "$vol" </dev/null)"
+printf '%s\n' "$override" | grep -q "theater" || fail "SSD override dry-run missed the warning"
+printf '%s\n' "$override" | grep -q "Dry run: nothing was written." || fail "SSD override dry-run wrote or said it did"
+[[ ! -e "$vol/privacy-sweep-free-space-fill" ]] || fail "SSD override dry-run created a fill directory"
+bash hdd-free-space/wipe-macos.sh --dry-run >/dev/null
+status=0
+bash hdd-free-space/wipe-macos.sh --yes >/dev/null 2>&1 || status=$?
+[[ "$status" -eq 2 ]] || fail "macOS wipe --yes should refuse (status $status)"
+# Live detection, still a dry run: this VM's virtual disks may claim to be rotational.
+status=0
+live_wipe="$(bash hdd-free-space/wipe-linux.sh --dry-run --volume "$vol" </dev/null 2>&1)" || status=$?
+[[ "$status" -eq 0 || "$status" -eq 2 ]] || fail "live dry-run status $status: $live_wipe"
+printf '%s\n' "$live_wipe" | grep -q "Free bytes:" || fail "live dry-run missed free bytes"
+printf '%s\n' "$live_wipe" | grep -q "Media:" || fail "live dry-run missed media"
+[[ ! -e "$vol/privacy-sweep-free-space-fill" ]] || fail "live dry-run created a fill directory"
+unset PRIVACY_SWEEP_SYS_BLOCK PRIVACY_SWEEP_MOUNT_POINT PRIVACY_SWEEP_FREE_BYTES \
+  PRIVACY_SWEEP_BLOCK_DEVICE PRIVACY_SWEEP_MEDIA_TYPE PRIVACY_SWEEP_WIPE_SIMULATE || true
+
+echo "== windows recovery and wipe fixtures =="
+if ! command -v pwsh >/dev/null 2>&1; then
+  fail "pwsh is not installed; Windows recovery fixtures were not run"
+fi
+export VSSADMIN_LOG="$TMP/vssadmin.log"
+export MANAGEBDE_LOG="$TMP/manage-bde.log"
+export CIPHER_LOG="$TMP/cipher.log"
+: > "$VSSADMIN_LOG"
+: > "$MANAGEBDE_LOG"
+: > "$CIPHER_LOG"
+wfix="$TMP/windows-recovery"
+drive="$wfix/drives/C"
+mkdir -p "$drive/\$Recycle.Bin/S-1-5-21-100" "$drive/\$Recycle.Bin/S-1-5-21-200" \
+  "$drive/Windows" \
+  "$drive/ProgramData/Microsoft/Search/Data/Applications/Windows" \
+  "$drive/Users/me/AppData/Local/Microsoft/Windows/Explorer" \
+  "$drive/EFSTMPWP" "$drive/sub/deep/EFSTMPWP"
+printf 'SECRET-ORIGINAL-PATH\n' > "$drive/\$Recycle.Bin/S-1-5-21-100/\$Iabc"
+printf 'data' > "$drive/\$Recycle.Bin/S-1-5-21-100/\$Rabc"
+printf 'SECRET-ORIGINAL-PATH\n' > "$drive/\$Recycle.Bin/S-1-5-21-200/\$Ione"
+printf 'SECRET-ORIGINAL-PATH\n' > "$drive/\$Recycle.Bin/S-1-5-21-200/\$Itwo"
+printf 'keep\n' > "$drive/\$Recycle.Bin/desktop.ini"
+printf 'SECRET-PAGEFILE' > "$drive/pagefile.sys"
+printf 'SECRET-HIBER' > "$drive/hiberfil.sys"
+printf 'SECRET-DUMP' > "$drive/Windows/MEMORY.DMP"
+printf 'SECRET-INDEX' > "$drive/ProgramData/Microsoft/Search/Data/Applications/Windows/Windows.edb"
+printf 'SECRET-THUMB' > "$drive/Users/me/AppData/Local/Microsoft/Windows/Explorer/thumbcache_32.db"
+printf 'SECRET-THUMB' > "$drive/Users/me/AppData/Local/Microsoft/Windows/Explorer/thumbcache_96.db"
+printf 'SECRET-ICON' > "$drive/Users/me/AppData/Local/Microsoft/Windows/Explorer/iconcache_32.db"
+printf 'SECRET-BYTES\n' > "$drive/EFSTMPWP/payload"
+: > "$drive/SDELTEMP"
+printf 'z\n' > "$drive/zzzzzzzzzzzz.txt"
+cp "$ROOT/tests/fixtures/recovery/vssadmin-shadows.txt" "$wfix/vssadmin-shadows.txt"
+cp "$ROOT/tests/fixtures/recovery/vssadmin-shadowstorage.txt" "$wfix/vssadmin-shadowstorage.txt"
+cp "$ROOT/tests/fixtures/recovery/manage-bde.txt" "$wfix/manage-bde.txt"
+wout="$(PRIVACY_SWEEP_RECOVERY_ROOT="$wfix" pwsh -NoProfile -NonInteractive -File "$ROOT/audit/audit-recovery-windows.ps1")"
+printf '%s\n' "$wout" | grep -q "Shadow copies: 2" || fail "shadow count missing: $wout"
+printf '%s\n' "$wout" | grep -q "HarddiskVolumeShadowCopy1" || fail "shadow path missing"
+printf '%s\n' "$wout" | grep -q "1.5 GB" || fail "shadow storage size missing"
+printf '%s\n' "$wout" | grep -q "SID folder: S-1-5-21-100" || fail "SID folder missing"
+printf '%s\n' "$wout" | grep -q '\$I count: 1' || fail "first SID \$I count missing: $wout"
+printf '%s\n' "$wout" | grep -q '\$R count: 1' || fail "first SID \$R count missing"
+printf '%s\n' "$wout" | grep -q '\$R bytes: 4' || fail "recycle payload size missing"
+printf '%s\n' "$wout" | grep -q '\$I count: 2' || fail "second SID \$I count missing"
+printf '%s\n' "$wout" | grep -q "Bytes: 15" || fail "pagefile size missing"
+printf '%s\n' "$wout" | grep -q "Windows.edb" || fail "search index path missing"
+printf '%s\n' "$wout" | grep -q "Windows.db" || fail "Windows.db path missing"
+printf '%s\n' "$wout" | grep -q "Count: 2" || fail "thumbcache count missing: $wout"
+printf '%s\n' "$wout" | grep -q "Volume C: Protection On" || fail "BitLocker on missing"
+printf '%s\n' "$wout" | grep -q "Volume D: Protection Off" || fail "BitLocker off missing"
+printf '%s\n' "$wout" | grep -q "SDELTEMP" || fail "windows remnant scan missed SDELTEMP"
+[[ ! -s "$VSSADMIN_LOG" ]] || fail "fixture audit called vssadmin: $(cat "$VSSADMIN_LOG")"
+[[ ! -s "$MANAGEBDE_LOG" ]] || fail "fixture audit called manage-bde: $(cat "$MANAGEBDE_LOG")"
+if printf '%s\n' "$wout" | grep -q 'SECRET-PAGEFILE\|SECRET-HIBER\|SECRET-DUMP\|SECRET-INDEX\|SECRET-THUMB\|SECRET-ICON\|SECRET-ORIGINAL-PATH\|SECRET-BYTES\|SHOULD-NOT-PRINT\|111111\|Numerical Password'; then
+  fail "windows recovery printed a secret: $wout"
+fi
+status=0
+pwsh -NoProfile -NonInteractive -File "$ROOT/audit/audit-recovery-windows.ps1" >/dev/null 2>&1 || status=$?
+[[ "$status" -eq 1 ]] || fail "windows recovery should refuse this OS without a fixture (status $status)"
+unset PRIVACY_SWEEP_RECOVERY_ROOT
+
+wvol="$TMP/wvol"
+mkdir -p "$wvol/EFSTMPWP"
+printf 'SECRET-REMNANT\n' > "$wvol/EFSTMPWP/payload"
+export PRIVACY_SWEEP_CIPHER="$ROOT/tests/fakebin/cipher"
+export PRIVACY_SWEEP_FREE_BYTES=4096
+: > "$CIPHER_LOG"
+status=0
+wsdd="$(PRIVACY_SWEEP_MEDIA_TYPE=ssd pwsh -NoProfile -NonInteractive -File "$ROOT/hdd-free-space/wipe-windows.ps1" -Yes -Volume "$wvol" 2>&1)" || status=$?
+[[ "$status" -eq 2 ]] || fail "windows SSD wipe should refuse (status $status): $wsdd"
+printf '%s\n' "$wsdd" | grep -q "theater" || fail "windows SSD refusal missed the warning"
+printf '%s\n' "$wsdd" | grep -q "Nothing was written." || fail "windows SSD refusal wrote or said it did"
+[[ ! -s "$CIPHER_LOG" ]] || fail "SSD refusal invoked cipher: $(cat "$CIPHER_LOG")"
+: > "$CIPHER_LOG"
+wdry="$(PRIVACY_SWEEP_MEDIA_TYPE=hdd pwsh -NoProfile -NonInteractive -File "$ROOT/hdd-free-space/wipe-windows.ps1" -WhatIf -Volume "$wvol")"
+printf '%s\n' "$wdry" | grep -q "Free bytes: 4096" || fail "windows WhatIf missed free bytes"
+printf '%s\n' "$wdry" | grep -q "Would run: cipher /w:$wvol" || fail "windows WhatIf missed cipher"
+printf '%s\n' "$wdry" | grep -q "Dry run: nothing was written." || fail "windows WhatIf did not stay dry"
+printf '%s\n' "$wdry" | grep -q "EFSTMPWP" || fail "windows WhatIf missed the fingerprint warning"
+printf '%s\n' "$wdry" | grep -q "does not remove Volume Shadow Copies" || fail "windows WhatIf missed snapshots"
+[[ ! -s "$CIPHER_LOG" ]] || fail "WhatIf invoked cipher: $(cat "$CIPHER_LOG")"
+wcan="$(printf 'n\n' | PRIVACY_SWEEP_MEDIA_TYPE=hdd pwsh -NoProfile -File "$ROOT/hdd-free-space/wipe-windows.ps1" -Volume "$wvol")"
+printf '%s\n' "$wcan" | grep -q "Cancelled. Nothing was written." || fail "windows prompt did not cancel: $wcan"
+[[ ! -s "$CIPHER_LOG" ]] || fail "cancel invoked cipher"
+: > "$CIPHER_LOG"
+wrun="$(PRIVACY_SWEEP_MEDIA_TYPE=hdd pwsh -NoProfile -NonInteractive -File "$ROOT/hdd-free-space/wipe-windows.ps1" -Yes -Volume "$wvol")"
+grep -q "/w:$wvol" "$CIPHER_LOG" || fail "cipher was not invoked with the volume: $(cat "$CIPHER_LOG")"
+if grep -q 'delete' "$CIPHER_LOG"; then
+  fail "cipher args included delete: $(cat "$CIPHER_LOG")"
+fi
+printf '%s\n' "$wrun" | grep -q "EFSTMPWP" || fail "windows post-scan missed the remnant"
+[[ -d "$wvol/EFSTMPWP" ]] || fail "windows wipe deleted a planted remnant"
+if printf '%s\n' "$wrun" | grep -q 'SECRET-REMNANT'; then
+  fail "windows post-scan printed remnant contents"
+fi
+: > "$CIPHER_LOG"
+wsim="$(PRIVACY_SWEEP_MEDIA_TYPE=ssd pwsh -NoProfile -NonInteractive -File "$ROOT/hdd-free-space/wipe-windows.ps1" -Yes -Simulate -Volume "$wvol" --i-know-this-is-ssd)"
+printf '%s\n' "$wsim" | grep -q "theater" || fail "windows SSD override missed the warning"
+printf '%s\n' "$wsim" | grep -q "SIMULATION: no free-space overwrite was performed." || fail "windows simulate did not say so"
+[[ ! -s "$CIPHER_LOG" ]] || fail "simulate invoked cipher: $(cat "$CIPHER_LOG")"
+unset PRIVACY_SWEEP_CIPHER PRIVACY_SWEEP_FREE_BYTES PRIVACY_SWEEP_MEDIA_TYPE \
+  VSSADMIN_LOG MANAGEBDE_LOG CIPHER_LOG || true
 
 echo
 echo "All local checks passed."

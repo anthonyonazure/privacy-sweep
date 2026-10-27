@@ -22,9 +22,13 @@ chmod +x *.sh
 
 | OS | What is counted | Script |
 | --- | --- | --- |
-| Windows | Prefetch files, Jump Lists, USBSTOR key paths, recent-item files, Wi-Fi profile names (not passwords) | [audit-windows.ps1](audit-windows.ps1) |
-| macOS | QuarantineEvents rows, recent-item files, Quick Look cache, shell-history line counts | [audit-macos.sh](audit-macos.sh) |
-| Linux | Thumbnail cache, recent-document entries, shell-history line counts | [audit-linux.sh](audit-linux.sh) |
+| Windows | Prefetch files, Jump Lists, USBSTOR key paths, recent-item files, Wi-Fi profile names (not passwords). Also shadow-copy counts, Recycle Bin `$I`/`$R` counts, pagefile/hiberfil/MEMORY.DMP size, search-index size, thumbcache database counts, wipe-tool remnant names, BitLocker protection status | [audit-windows.ps1](audit-windows.ps1) |
+| macOS | QuarantineEvents rows, recent-item files, Quick Look cache, shell-history line counts. Also local snapshots, Document Revisions size, external `.Trashes` counts, sleepimage/swap size, FileVault on/off | [audit-macos.sh](audit-macos.sh) |
+| Linux | Thumbnail cache, recent-document entries, shell-history line counts. Also swap, LUKS status (no keys), wipe-tool remnant names | [audit-linux.sh](audit-linux.sh) |
+
+Recovery structures are reported and not deleted. Purging them is not part of this repo.
+Free-space fill is a separate opt-in module and is not run from here. See
+[docs/leave-no-trace.md](../docs/leave-no-trace.md).
 
 Thumbnail filenames are hashes, so the Linux report gives the directory, the file count, and the
 size rather than tens of thousands of paths. The output names programs and networks. Don't paste
