@@ -52,8 +52,16 @@ Run everything with no prompts:
 - **Search index (Windows.edb), pagefile, hiberfil.** Managed by Windows. Turn hibernation off with
   `powercfg /h off` if you want the hiberfil gone; that is a deliberate setting, not a sweep.
 
-## Wi-Fi passwords (view, not clear)
+## Other scripts (not part of `clear-all`)
 
-To see saved network passwords: `netsh wlan show profiles`, then
-`netsh wlan show profile name="NETWORK" key=clear` and read the Key Content line. To forget a
-network: Settings > Network & internet > Wi-Fi > Manage known networks.
+| Script | What it does |
+| --- | --- |
+| [forget-wifi.ps1](forget-wifi.ps1) | Lists saved Wi-Fi profiles and deletes them with `netsh`. Keeps the one you are joined to unless you pass `-IncludeCurrent`. Does not print the password. |
+| [../audit/audit-windows.ps1](../audit/audit-windows.ps1) | Report only: Prefetch, Jump Lists, USBSTOR, recent items, Wi-Fi profile names. |
+| [../browsers/clear-browsers.ps1](../browsers/clear-browsers.ps1) | History, cookies, and cache for Chrome, Edge, Firefox, and Brave. Refuses a browser that is still open. |
+
+## Wi-Fi profile names
+
+`forget-wifi.ps1` and the audit script list profile names. They do not run `key=clear`, so the
+password is not printed. To forget a network by hand: Settings > Network & internet > Wi-Fi >
+Manage known networks.

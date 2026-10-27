@@ -39,6 +39,14 @@ Run everything without prompts:
 | Shell history | Every Terminal command you typed | [clear-shell-history.sh](clear-shell-history.sh) | Truncates the zsh/bash history files, and Terminal's per-window copies in `~/.zsh_sessions` |
 | Clipboard | What you last copied, plus optional history | [clear-clipboard.sh](clear-clipboard.sh) | Empties the pasteboard |
 
+## Other scripts (not part of `clear-all`)
+
+| Script | What it does |
+| --- | --- |
+| [forget-wifi.sh](forget-wifi.sh) | Lists preferred Wi-Fi networks and removes them. Keeps the one you are joined to unless you pass `--include-current`. |
+| [../audit/audit-macos.sh](../audit/audit-macos.sh) | Report only: quarantine log, recent items, Quick Look, shell history. Counts and paths. |
+| [../browsers/clear-browsers.sh](../browsers/clear-browsers.sh) | History, cookies, and cache, including Safari. Quits if that browser is open. |
+
 ## What these scripts deliberately do NOT touch
 
 - **Spotlight index, unified logs, knowledgeC.db, Biome.** These are protected by System Integrity

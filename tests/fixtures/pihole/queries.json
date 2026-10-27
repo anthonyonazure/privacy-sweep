@@ -1,0 +1,15 @@
+{
+  "now": 1700000000,
+  "clients": [
+    {"ip": "10.0.0.10", "name": "laptop"},
+    {"ip": "10.0.0.40", "name": "living-room-tv"},
+    {"ip": "10.0.0.41", "name": "bedroom-roku"}
+  ],
+  "queries": [
+    {"age": 3600, "domain": "example.com", "client": "10.0.0.10", "status": 2},
+    {"age": 7200, "domain": "ads.example", "client": "10.0.0.10", "status": 1},
+    {"age": 1800, "domain": "log-1.samsungacr.com", "client": "10.0.0.40", "status": 1},
+    {"age": 1800, "domain": "scribe.logs.roku.com", "client": "10.0.0.41", "status": 2},
+    {"age": 10000000, "domain": "old.samsungacr.com", "client": "10.0.0.40", "status": 1}
+  ]
+}

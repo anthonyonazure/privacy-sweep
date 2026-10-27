@@ -1,0 +1,14 @@
+{
+  "devices": [
+    {
+      "hwaddr": "aa:bb:cc:dd:ee:40",
+      "macVendor": "Samsung Electronics",
+      "ips": [{"ip": "10.0.0.40", "name": "living-room-tv"}]
+    },
+    {
+      "hwaddr": "aa:bb:cc:dd:ee:10",
+      "macVendor": "Dell",
+      "ips": [{"ip": "10.0.0.10", "name": "laptop"}]
+    }
+  ]
+}

@@ -58,7 +58,30 @@ of them require `sudo` unless the folder README says so explicitly.
 | [windows/](windows/) | Scripts | PowerShell. Run in an elevated terminal for Prefetch. |
 | [linux/](linux/) | Scripts | Bash. Works on GNOME/KDE desktops. |
 | [ios/](ios/) | Guide | iOS is sandboxed and encrypted; no script can reach these. Manual steps only. |
-| [android/](android/) | Guide + partial | Some clearing possible over `adb`; most is manual. |
+| [android/](android/) | Guide + partial | Some clearing possible over `adb`; most is manual. A permission report is included. |
+| [network/](network/) | Scripts + guides | Pi-hole lists and reports, a router checklist, and a LAN inventory. Your own network only. |
+| [audit/](audit/) | Report only | Counts and paths of the stores an examiner would look at. Deletes nothing. |
+| [browsers/](browsers/) | Scripts | History, cookies, and cache. Opt-in; not part of `clear-all`. |
+
+## Modules beyond the per-OS sweep
+
+The launcher above still runs only the original per-OS clear set. The modules below are
+separate because they either talk to your network, only report, or sign you out of things.
+
+| Module | What you run | What it does |
+| --- | --- | --- |
+| [network/pihole-tv/](network/pihole-tv/) | `add-blocklists.sh`, `acr-clients.sh` | Adds maintained smart-TV / ACR blocklists to a Pi-hole you administer, and reports which LAN clients looked those names up. **Dry-run unless you pass `--ask` or `--yes`.** |
+| [network/pihole-report/](network/pihole-report/) | `weekly-report.sh` | Markdown report: top clients, top blocked domains, clients new since last run, ACR hits. Example cron and systemd timer included. |
+| [network/router-hygiene/](network/router-hygiene/) | `check-lan.sh` plus the checklist | Admin-password, firmware, UPnP, remote admin, forced DNS, guest Wi-Fi, WPS. The script only checks what a LAN host can see. |
+| [network/device-inventory/](network/device-inventory/) | `inventory.sh` | ARP, plus mDNS/SSDP and `nmap -sn` when you allow probes. Flags unnamed devices and TVs on this LAN. |
+| [audit/](audit/) | `audit.sh` or `audit-windows.ps1` | Counts and paths for Prefetch, Jump Lists, USBSTOR, recent items, Wi-Fi profiles, quarantine, Quick Look, thumbnails, shell history. **Never deletes.** |
+| [browsers/](browsers/) | `clear-browsers.sh` / `.ps1` | Chrome, Edge, Firefox, Safari, Brave: history, cookies, cache. Refuses to run while that browser is open. |
+| [linux/forget-wifi.sh](linux/forget-wifi.sh), [macos/forget-wifi.sh](macos/forget-wifi.sh), [windows/forget-wifi.ps1](windows/forget-wifi.ps1) | one script per OS | Lists saved Wi-Fi networks, then forgets them. Keeps the network you are using unless you ask. |
+| [android/audit-permissions.sh](android/audit-permissions.sh) | over `adb` | Lists accessibility, device-admin, SMS, call-log, notification, and overlay access. Flags installs that did not come from Play. Removes nothing. |
+
+Pi-hole list changes are the one place the default is a dry run rather than a prompt. Everywhere
+else, `--dry-run` previews, a plain run asks, and `--yes` skips the prompt. Report-only scripts
+accept the same flags and still do not delete.
 
 ## The real fix: encryption at rest
 

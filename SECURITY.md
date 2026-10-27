@@ -32,6 +32,24 @@ your own device**. It is a privacy-hygiene tool, the same category as the built-
   space or guarantee unrecoverability. For that, and for the only protection that covers every store
   at once, use full-disk encryption: FileVault, BitLocker, LUKS, or a phone's built-in encryption.
 
+## Network, browsers, and the audit report
+
+The `network/` scripts are for a Pi-hole or LAN you administer. They are not a scanner for
+networks that are not yours. Adding blocklists changes DNS for every device that uses that
+Pi-hole, so that script previews and changes nothing until you pass `--ask` or `--yes`.
+Blocking a smart-TV list can also stop a TV app, a recommendation row, or an update check.
+If a TV breaks, disable that list in the Pi-hole UI and update gravity.
+
+The audit scripts and `android/audit-permissions.sh` only print counts, paths, and permission
+names. They do not wipe Windows Event Logs, the USBSTOR registry key, macOS Spotlight, Linux
+login records, or anything else this file already puts out of scope. An audit printout is
+itself sensitive (program names, network names). Keep it to yourself.
+
+Forgetting a saved Wi-Fi network, and clearing browser cookies, are opt-in. They are not part
+of `clear-all`. The Wi-Fi scripts leave the network you are joined to alone unless you pass
+`--include-current`. The browser scripts leave bookmarks and saved passwords alone, and they
+will not touch a browser that is still running, even with `--yes`.
+
 ## Reporting
 
 Found a script that deletes more than its description says, needs privileges it shouldn't, or could

@@ -41,6 +41,18 @@ chmod +x clear-adb.sh
 It clears per-app caches and the running log buffer (`logcat -c`). That's the honest ceiling for
 non-rooted access.
 
+## Permission report (optional, removes nothing)
+
+[audit-permissions.sh](audit-permissions.sh) asks the phone, over `adb`, which apps hold the
+permissions that can read or interrupt a lot of what you do: accessibility services, device
+admin, SMS, call log, notification listeners, and drawing over other apps. Third-party apps
+whose installer is not the Play Store are flagged. It does not uninstall or disable anything.
+
+```bash
+./audit-permissions.sh            # print the report
+./audit-permissions.sh --dry-run  # same report; there is nothing to apply
+```
+
 ## The one that matters most
 
 Before selling or handing on the phone: **Settings > System > Reset options > Erase all data

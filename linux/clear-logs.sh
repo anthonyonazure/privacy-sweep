@@ -30,6 +30,9 @@ if $DRY_RUN; then
 fi
 confirm || { echo "Cancelled."; exit 0; }
 
-command -v journalctl >/dev/null 2>&1 && journalctl --rotate 2>/dev/null && journalctl --vacuum-time=1s 2>/dev/null || true
+if command -v journalctl >/dev/null 2>&1; then
+  journalctl --rotate 2>/dev/null || true
+  journalctl --vacuum-time=1s 2>/dev/null || true
+fi
 find /var/log -type f -name '*.log' -exec truncate -s 0 {} \; 2>/dev/null || true
 echo "Done. Journal vacuumed and *.log files truncated."

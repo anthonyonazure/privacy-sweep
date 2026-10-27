@@ -47,6 +47,14 @@ administer the box and are deliberately resetting it, but it is system administr
 privacy cleanup, so you invoke it on purpose with `sudo`. Do not run it on a machine you do not
 administer.
 
+## Other scripts (not part of `clear-all`)
+
+| Script | What it does |
+| --- | --- |
+| [forget-wifi.sh](forget-wifi.sh) | Lists NetworkManager Wi-Fi profiles and forgets them. Keeps the one you are using unless you pass `--include-current`. |
+| [../audit/audit-linux.sh](../audit/audit-linux.sh) | Report only: thumbnail, recent, and shell-history counts and paths. |
+| [../browsers/clear-browsers.sh](../browsers/clear-browsers.sh) | History, cookies, and cache. Quits if that browser is open. |
+
 ## Login records this set does NOT touch
 
 `utmp`, `wtmp`, `btmp` and `lastlog` (the who-logged-in-when records) are managed by the system and
