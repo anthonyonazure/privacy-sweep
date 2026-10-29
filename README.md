@@ -62,7 +62,7 @@ of them require `sudo` unless the folder README says so explicitly.
 | [windows/](windows/) | Scripts | PowerShell. Run in an elevated terminal for Prefetch. |
 | [linux/](linux/) | Scripts | Bash. Works on GNOME/KDE desktops. |
 | [ios/](ios/) | Guide | iOS is sandboxed and encrypted; no script can reach these. Manual steps only. |
-| [android/](android/) | Guide + partial | Some clearing possible over `adb`; most is manual. A permission report is included. |
+| [android/](android/) | Guide + partial | `clear-adb.sh` clears app caches and the log buffer over `adb`; the rest is manual. Report-only `audit-permissions.sh` and `audit-usage.sh` (usage-stats presence) are included. |
 | [android-tv/](android-tv/) | Report only | Android TV / Google TV package report over network `adb`. Flags telemetry, ads, and content rows. Disables nothing. |
 | [network/](network/) | Scripts + guides | Pi-hole lists and reports, a router checklist, and a LAN inventory. Your own network only. |
 | [audit/](audit/) | Report only | Counts and paths for execution stores, knowledgeC, Biome, FSEvents, login records, and recovery structures (snapshots, shadow copies, swap, encryption status). Deletes nothing. |
@@ -141,6 +141,13 @@ free space and does not delete snapshots or shadow copies. `--dry-run --all-modu
 (Windows: `-DryRun -AllModules`) previews those opt-in tools and still deletes nothing.
 [docs/reduce-future-logging.md](docs/reduce-future-logging.md) is the "log less" layer.
 [docs/anti-forensics.md](docs/anti-forensics.md) is why a wipe leaves its own marks.
+
+## Tests and changelog
+
+`tests/test-privacy-sweep.sh` runs every script's syntax check, shellcheck, dry runs against fixtures,
+and a fake Pi-hole, so nothing touches a real router or your real files. It needs `shellcheck`,
+`python3`, and `pwsh` (PowerShell) installed. [CHANGELOG.md](CHANGELOG.md) lists what changed;
+there are no tagged releases yet, so use the latest `main`.
 
 ## License
 
