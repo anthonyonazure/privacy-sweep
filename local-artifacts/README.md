@@ -28,6 +28,19 @@ reset. Those have their own flags and their own typed phrases:
 | `-ResetSearchIndex` | `RESET SEARCH INDEX` |
 | `--vacuum-auditd` | `VACUUM AUDIT LOGS` |
 
+Ordinary history that the owning app rebuilds has its own flags and is included in
+`--all-opt-in`:
+
+| Flag | What it clears |
+| --- | --- |
+| `--clear-tool-history` (macOS, Linux) | `.viminfo`, `.lesshst`, and the Python, Node, MySQL, psql, and sqlite history files, plus `.zsh_sessions` and `.bash_sessions`. Shell history, `known_hosts`, and cloud CLI folders are left alone. |
+| `-ClearTypedPaths` (Windows) | Explorer address-bar paths, File Explorer search terms, the Win+R Run box, and the open/save dialog history. |
+| `-ClearRdpHistory` (Windows) | Remote Desktop recent servers, the saved-server settings, the screen bitmap cache, and `Default.rdp`. Connection files you saved yourself are not touched. |
+
+Windows Recall is not cleared by file deletion. Use Settings > Privacy & security >
+Recall & snapshots to delete snapshots or turn it off; the audit reports whether the
+data folder exists.
+
 Mail stores (PST, OST, MBOX, Mail.app, Thunderbird) are **never** deleted. There is
 no flag for that. Message databases for Teams, Slack, Discord, and Telegram
 (`IndexedDB`, `Local Storage`, Telegram `tdata`) are not deleted. Only directories

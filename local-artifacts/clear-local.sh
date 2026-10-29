@@ -6,6 +6,7 @@
 #
 #   ./clear-local.sh --dry-run --all-opt-in
 #   ./clear-local.sh --clear-screenshots --apply
+#   ./clear-local.sh --clear-tool-history --apply   # .viminfo, .lesshst, REPL and DB-client history
 #   ./clear-local.sh --vacuum-auditd --apply
 set -euo pipefail
 
@@ -26,6 +27,7 @@ DO_DS=false
 DO_DNS=false
 DO_TRASH=false
 DO_AUDITD=false
+DO_TOOLS=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -40,6 +42,7 @@ while [[ $# -gt 0 ]]; do
     --flush-dns) DO_DNS=true ;;
     --clear-external-trash) DO_TRASH=true ;;
     --vacuum-auditd) DO_AUDITD=true ;;
+    --clear-tool-history) DO_TOOLS=true ;;
     --help|-h) grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
@@ -53,6 +56,7 @@ if [[ "$ALL" == true ]]; then
   DO_DS=true
   DO_DNS=true
   DO_TRASH=true
+  DO_TOOLS=true
 fi
 
 HOME_ROOT="${PRIVACY_SWEEP_HOME_ROOT:-$HOME}"
@@ -80,7 +84,7 @@ count_files() {
 clear_dir_contents() {
   local path="$1"
   case "$path" in
-    */Pictures/Screenshots|*/Pictures/screenshots|*/.local/share/klipper|*/.local/share/copyq|*/.local/share/gpaste|*/.local/share/parcellite|*/Library/Application\ Support/NotificationCenter|*/.local/share/notifications|*/.Trashes|*/.Trashes/*)
+    */Pictures/Screenshots|*/Pictures/screenshots|*/.local/share/klipper|*/.local/share/copyq|*/.local/share/gpaste|*/.local/share/parcellite|*/Library/Application\ Support/NotificationCenter|*/.local/share/notifications|*/.Trashes|*/.Trashes/*|*/.zsh_sessions|*/.bash_sessions)
       ;;
     *)
       echo "Refusing unexpected path: $path"
@@ -236,6 +240,36 @@ if [[ "$DO_TRASH" == true ]]; then
   echo
 fi
 
+if [[ "$DO_TOOLS" == true ]]; then
+  echo "-- Tool history files --"
+  echo "Editor, pager, REPL, and database-client history. Each app recreates its file."
+  echo "Shell history (.zsh_history, .bash_history) has its own per-OS clear script."
+  echo "A shell that is still open rewrites its session file when it exits."
+  for name in .viminfo .lesshst .python_history .node_repl_history .mysql_history .psql_history .sqlite_history; do
+    file="$HOME_ROOT/$name"
+    if [[ -f "$file" ]]; then
+      n="$(wc -l < "$file" 2>/dev/null | tr -d ' ' || true)"
+      echo "Path: $file  Lines: ${n:-unreadable} (contents not printed)"
+      if will_apply; then
+        command rm -f -- "$file"
+        echo "Deleted $file"
+      else
+        echo "Dry run: would delete. Nothing was deleted."
+      fi
+    else
+      echo "Not present: $file"
+    fi
+  done
+  for dir in "$HOME_ROOT/.zsh_sessions" "$HOME_ROOT/.bash_sessions"; do
+    if [[ -d "$dir" ]]; then
+      clear_dir_contents "$dir"
+    else
+      echo "Not present: $dir"
+    fi
+  done
+  echo
+fi
+
 if [[ "$DO_AUDITD" == true ]]; then
   echo "-- auditd vacuum --"
   echo "WARNING: this discards a syscall audit trail. Forward-secure journal sealing can show other log tampering. See docs/anti-forensics.md."
@@ -257,7 +291,7 @@ if [[ "$DO_AUDITD" == true ]]; then
   echo
 fi
 
-if [[ "$DO_SHOTS" != true && "$DO_CLIP" != true && "$DO_NOTE" != true && "$DO_DS" != true && "$DO_DNS" != true && "$DO_TRASH" != true && "$DO_AUDITD" != true ]]; then
+if [[ "$DO_SHOTS" != true && "$DO_CLIP" != true && "$DO_NOTE" != true && "$DO_DS" != true && "$DO_DNS" != true && "$DO_TRASH" != true && "$DO_AUDITD" != true && "$DO_TOOLS" != true ]]; then
   echo "No clear flag was set. Pass --all-opt-in or a specific --clear-* flag."
 fi
 

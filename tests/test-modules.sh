@@ -220,6 +220,46 @@ if printf '%s\n' "$chat_out" | grep -q 'SECRET-CHAT\|SECRET-BODY'; then
   fail "chat clear printed a secret"
 fi
 
+echo "== tool history, typed paths, and RDP history clears =="
+tools="$TMP/tools-home"
+mkdir -p "$tools/.zsh_sessions" "$tools/.ssh"
+printf 'SECRET-VIM\n' > "$tools/.viminfo"
+printf 'SECRET-SESSION\n' > "$tools/.zsh_sessions/a.session"
+printf 'KEEP-SHELL\n' > "$tools/.zsh_history"
+printf 'KEEP-HOSTS\n' > "$tools/.ssh/known_hosts"
+tools_out="$(PRIVACY_SWEEP_HOME_ROOT="$tools" bash "$ROOT/local-artifacts/clear-local.sh" --dry-run --clear-tool-history)"
+[[ -f "$tools/.viminfo" ]] || fail "dry run deleted .viminfo"
+PRIVACY_SWEEP_HOME_ROOT="$tools" bash "$ROOT/local-artifacts/clear-local.sh" --yes --clear-tool-history >/dev/null
+[[ -f "$tools/.viminfo" ]] || fail "--yes alone deleted .viminfo"
+if printf '%s\n' "$tools_out" | grep -q 'SECRET-VIM'; then
+  fail "tool history clear printed file contents"
+fi
+PRIVACY_SWEEP_HOME_ROOT="$tools" bash "$ROOT/local-artifacts/clear-local.sh" --apply --clear-tool-history >/dev/null
+[[ ! -e "$tools/.viminfo" ]] || fail ".viminfo was not deleted"
+[[ ! -e "$tools/.zsh_sessions/a.session" ]] || fail "zsh session file was not cleared"
+[[ -f "$tools/.zsh_history" ]] || fail "shell history was deleted by the tool-history clear"
+[[ -f "$tools/.ssh/known_hosts" ]] || fail "known_hosts was deleted"
+
+rdp="$TMP/rdp-home"
+mkdir -p "$rdp/RdpCache/Cache" "$rdp/Documents"
+printf 'bitmap\n' > "$rdp/RdpCache/Cache/Cache0001.bin"
+printf 'full address:s:secret-server\n' > "$rdp/Documents/Default.rdp"
+printf 'full address:s:keep-me\n' > "$rdp/Documents/saved.rdp"
+reglog="$TMP/registry-sim.log"
+PRIVACY_SWEEP_REGISTRY_LOG="$reglog" PRIVACY_SWEEP_HOME_ROOT="$rdp" pwsh -NoProfile -NonInteractive -File "$ROOT/local-artifacts/clear-local.ps1" -ClearTypedPaths -ClearRdpHistory >/dev/null
+[[ -f "$rdp/Documents/Default.rdp" && -f "$rdp/RdpCache/Cache/Cache0001.bin" ]] || fail "RDP dry run deleted files"
+[[ ! -e "$reglog" ]] || fail "dry run wrote registry changes"
+rdp_out="$(PRIVACY_SWEEP_REGISTRY_LOG="$reglog" PRIVACY_SWEEP_HOME_ROOT="$rdp" pwsh -NoProfile -NonInteractive -File "$ROOT/local-artifacts/clear-local.ps1" -ClearTypedPaths -ClearRdpHistory -Apply)"
+[[ ! -e "$rdp/Documents/Default.rdp" ]] || fail "Default.rdp was not removed"
+[[ -f "$rdp/Documents/saved.rdp" ]] || fail "a saved .rdp connection was deleted"
+[[ ! -e "$rdp/RdpCache/Cache/Cache0001.bin" ]] || fail "RDP bitmap cache was not cleared"
+for needle in 'Explorer\TypedPaths' 'Explorer\WordWheelQuery' 'Explorer\RunMRU' 'OpenSavePidlMRU' 'LastVisitedPidlMRU' 'Terminal Server Client\Default' 'Terminal Server Client\Servers'; do
+  grep -F -q "$needle" "$reglog" || fail "registry clear missed $needle"
+done
+if printf '%s\n' "$rdp_out" | grep -q 'secret-server'; then
+  fail "RDP clear printed a server name"
+fi
+
 echo "== hardware follow-up =="
 timeout_out="$(
   # shellcheck source=audit/report-lib.sh

@@ -24,6 +24,8 @@ param(
   [switch]$ClearOfficeTemps,
   [switch]$FlushDns,
   [switch]$ClearChatCaches,
+  [switch]$ClearTypedPaths,
+  [switch]$ClearRdpHistory,
   [switch]$ClearEventLogs,
   [switch]$ResetSearchIndex
 )
@@ -41,6 +43,8 @@ if ($AllOptIn) {
   $ClearOfficeTemps = $true
   $FlushDns = $true
   $ClearChatCaches = $true
+  $ClearTypedPaths = $true
+  $ClearRdpHistory = $true
 }
 
 $homeRoot = $env:PRIVACY_SWEEP_HOME_ROOT
@@ -80,7 +84,7 @@ Write-Host "Nothing is deleted unless you pass -Apply. -Yes does not delete."
 Write-Host "This is not part of clear-all."
 Write-Host ""
 
-$any = $ClearOfficeMru -or $ClearRecentDocs -or $ClearScreenshots -or $ClearClipboardManagers -or $ClearNotifications -or $ClearPrinterSpool -or $ClearOfficeTemps -or $FlushDns -or $ClearChatCaches -or $ClearEventLogs -or $ResetSearchIndex
+$any = $ClearOfficeMru -or $ClearRecentDocs -or $ClearScreenshots -or $ClearClipboardManagers -or $ClearNotifications -or $ClearPrinterSpool -or $ClearOfficeTemps -or $FlushDns -or $ClearChatCaches -or $ClearTypedPaths -or $ClearRdpHistory -or $ClearEventLogs -or $ResetSearchIndex
 if (-not $any) {
   Write-Host "No clear flag was set."
   Write-Host "Dry run: nothing was deleted."
@@ -189,6 +193,72 @@ if ($ClearOfficeMru -or $ClearRecentDocs) {
     } else {
       Write-Host "Dry run: nothing was deleted."
     }
+  }
+  Write-Host ""
+}
+function Remove-RegistryKeyList {
+  param([string[]]$Keys)
+  foreach ($key in $Keys) {
+    Write-Host "Would clear $key"
+    if (Test-WillApply) {
+      if ($env:PRIVACY_SWEEP_REGISTRY_LOG) {
+        Add-Content -LiteralPath $env:PRIVACY_SWEEP_REGISTRY_LOG -Value "clear $key"
+        Write-Host "SIMULATION: registry was not modified."
+      } elseif (Test-Path -LiteralPath $key) {
+        try {
+          Remove-Item -LiteralPath $key -Recurse -Force -ErrorAction Stop
+          Write-Host "Removed $key"
+        } catch {
+          Write-Host "Could not remove $key. Nothing else was forced."
+        }
+      } else {
+        Write-Host "Not present: $key"
+      }
+    } else {
+      Write-Host "Dry run: nothing was deleted."
+    }
+  }
+}
+
+if ($ClearTypedPaths) {
+  Write-Host "-- Typed paths, searches, Run box, and dialog history --"
+  Write-Host "Explorer rebuilds these keys as you work. Typed text is not printed."
+  $explorer = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer'
+  Remove-RegistryKeyList @(
+    "$explorer\TypedPaths",
+    "$explorer\WordWheelQuery",
+    "$explorer\RunMRU",
+    "$explorer\ComDlg32\OpenSavePidlMRU",
+    "$explorer\ComDlg32\LastVisitedPidlMRU"
+  )
+  Write-Host ""
+}
+if ($ClearRdpHistory) {
+  Write-Host "-- Remote Desktop history, screen cache, and Default.rdp --"
+  Write-Host "Server names are not printed. Saved .rdp files you made yourself are not touched."
+  $tsc = 'HKCU:\Software\Microsoft\Terminal Server Client'
+  Remove-RegistryKeyList @("$tsc\Default", "$tsc\Servers")
+  $rdpCache = Join-Path $homeRoot 'RdpCache\Cache'
+  if ($env:LOCALAPPDATA -and -not $env:PRIVACY_SWEEP_HOME_ROOT) {
+    $rdpCache = Join-Path $env:LOCALAPPDATA 'Microsoft\Terminal Server Client\Cache'
+  }
+  Clear-CacheDir $rdpCache
+  $docsDir = Join-Path $homeRoot 'Documents'
+  if (-not $env:PRIVACY_SWEEP_HOME_ROOT) {
+    $mine = [Environment]::GetFolderPath('MyDocuments')
+    if ($mine) { $docsDir = $mine }
+  }
+  $defaultRdp = Join-Path $docsDir 'Default.rdp'
+  if ((Split-Path -Leaf $defaultRdp) -eq 'Default.rdp' -and (Test-Path -LiteralPath $defaultRdp -PathType Leaf)) {
+    Write-Host "Path: $defaultRdp"
+    if (Test-WillApply) {
+      Remove-Item -LiteralPath $defaultRdp -Force -ErrorAction SilentlyContinue
+      Write-Host "Removed Default.rdp (it holds the last server you connected to)."
+    } else {
+      Write-Host "Dry run: would remove. Nothing was deleted."
+    }
+  } else {
+    Write-Host "Not present: $defaultRdp"
   }
   Write-Host ""
 }
