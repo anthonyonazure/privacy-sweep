@@ -9,9 +9,24 @@
   Set PRIVACY_SWEEP_RECOVERY_ROOT to a fixture tree for tests.
   -DryRun and -Yes are accepted so the flag style matches the other audits.
 #>
-param([switch]$DryRun, [switch]$Yes)
+param([switch]$DryRun, [switch]$Yes, [switch]$Force)
 
 $ErrorActionPreference = 'Continue'
+
+# audit-windows.ps1 already runs this report. A full pass that also executes
+# this file (every script in the folder, one PowerShell process) must not
+# print the section twice. -Force prints it again. A new process starts over.
+if (-not $Force -and -not $env:PRIVACY_SWEEP_RECOVERY_ROOT -and $global:PrivacySweepRecoveryAuditRan) {
+  Write-Host "Windows recovery structures were already reported in this run. Skipping the duplicate."
+  $global:LASTEXITCODE = 0
+  return
+}
+if ($env:PRIVACY_SWEEP_RECOVERY_ROOT -and $global:PrivacySweepRecoveryAuditRan -and -not $Force) {
+  Write-Host "Windows recovery structures were already reported in this run. Skipping the duplicate."
+  $global:LASTEXITCODE = 0
+  return
+}
+$global:PrivacySweepRecoveryAuditRan = $true
 
 function Join-Parts {
   param([string]$Base, [string[]]$Parts)
@@ -257,13 +272,24 @@ if ($fixture) {
     Write-Host ""
   }
   Write-Host "Shadow copies, the Recycle Bin, pagefile, hiberfil, and the search index were not deleted."
-  exit 0
+  return
 }
 
 $onWindows = ($env:OS -eq 'Windows_NT')
 if (-not $onWindows) {
   Write-Host "This report is for Windows. Detected OS=$($env:OS)."
-  exit 1
+  $global:LASTEXITCODE = 1
+  # exit inside a script invoked with & closes a Windows PowerShell 5.1 session.
+  # Exit the process only when this file is the -File target.
+  $cmdArgs = [Environment]::GetCommandLineArgs()
+  $entry = $false
+  for ($i = 0; $i -lt $cmdArgs.Count; $i++) {
+    if (($cmdArgs[$i] -eq '-File' -or $cmdArgs[$i] -eq '-f') -and ($i + 1) -lt $cmdArgs.Count) {
+      if ((Split-Path -Leaf $cmdArgs[$i + 1]) -eq (Split-Path -Leaf $PSCommandPath)) { $entry = $true }
+    }
+  }
+  if ($entry) { exit 1 }
+  return
 }
 
 Write-Host "-- Volume Shadow Copies --"

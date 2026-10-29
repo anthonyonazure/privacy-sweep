@@ -19,8 +19,9 @@ TRASH="$HOME/.Trash"
 
 echo "== Trash =="
 if [[ ! -d "$TRASH" ]]; then echo "No Trash folder found. Nothing to do."; exit 0; fi
-COUNT=$(find "$TRASH" -mindepth 1 -maxdepth 1 2>/dev/null | wc -l | tr -d ' ')
-SIZE=$(du -sh "$TRASH" 2>/dev/null | cut -f1)
+# find returns non-zero on an unreadable entry. Do not abort --dry-run.
+COUNT=$(find "$TRASH" -mindepth 1 -maxdepth 1 2>/dev/null | wc -l | tr -d ' ' || true)
+SIZE=$(du -sh "$TRASH" 2>/dev/null | cut -f1 || true)
 echo "Target: $TRASH"
 echo "Items: $COUNT   Size: ${SIZE:-0}"
 

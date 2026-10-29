@@ -7,7 +7,8 @@ set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-case "$(uname -s)" in
+OS_NAME="${PRIVACY_SWEEP_OS:-$(uname -s)}"
+case "$OS_NAME" in
   Darwin)
     exec bash "$DIR/audit-macos.sh" "$@"
     ;;

@@ -62,4 +62,6 @@ administer.
 edited only by admins. The clear scripts leave them alone on purpose. `audit-linux.sh` reports
 whether `wtmp`, `lastlog`, and `btmp` exist and how large they are. It does not print who logged
 in, and it does not edit the files. Swap and LUKS are reported by the audit (status only, no keys)
-and are not cleared by these scripts.
+and are not cleared by these scripts. Swap purge is a separate opt-in in
+[../memory-residue/memory.sh](../memory-residue/memory.sh) (`--purge-swap`, dry-run unless
+`--apply`). It is not part of `clear-all`.

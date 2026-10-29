@@ -23,7 +23,8 @@ you use for everything else.
 
 On a Mac, a volume can be kept out of Spotlight. On Windows, Indexing Options decides
 what Windows Search reads into its database. Those are settings, not something this
-repo flips silently in the registry.
+repo flips silently in the registry. The switches, and why this repo does not flip
+them, are written out in [reduce-future-logging.md](reduce-future-logging.md).
 
 For a TV, the useful step is upstream of the PC: a guest network, and DNS you
 administer. See [network/pihole-tv/](../network/pihole-tv/) (on-TV settings, then
@@ -57,10 +58,11 @@ The audit **reports** these: shadow-copy counts, snapshot names, Document Revisi
 size, and whether pagefile, hiberfil, sleepimage, or swap is present. It does not
 delete them, and it does not read the bytes inside them.
 
-Removing them throws away the rollback copy. That is a real backup, not a cache, so
-this repository does not ship that step. A later opt-in tool would need a loud warning
-and would stay out of `clear-all`. Until then, if you remove snapshots yourself, know
-that you are deleting restore points.
+Removing them throws away the rollback copy. That is a real backup, not a cache.
+[recovery-purge/](../recovery-purge/) is the opt-in tool: each store has its own flag,
+a dry run is the default, and a typed phrase is required before anything is deleted.
+It is not part of `clear-all`. The banner in that tool is the short version: this
+destroys your backups, Previous Versions, and a common ransomware-recovery path.
 
 ### (d) Free space on a hard disk
 
@@ -149,7 +151,8 @@ Do not add fake Prefetch entries, fake UserAssist counts, or any other "this wil
 normal" record. Examiners compare artifacts with each other. A program-execution entry
 that does not line up with the rest of the system is itself a signal. Timestamps that
 disagree across stores are a signal. This repository does not write decoys, and you
-should not either.
+should not either. [anti-forensics.md](anti-forensics.md) is the longer version of what
+those comparisons look like, and why timestomping and journal mutilation are out of scope.
 
 The same applies to selectively deleting one history while leaving the others. The audit
 exists so you can **see** the set: execution stores, unified logs, knowledgeC, Biome,
@@ -170,7 +173,9 @@ wipe of the TV, and they are not a wipe of the router's admin log.
 
 ## What this page will not help you do
 
-Mass-deleting Windows Event Logs, deleting USB device history, extracting a keychain or
-a password manager, and damaging the filesystem journal are out of scope. See
-[SECURITY.md](../SECURITY.md). If you are under a legal hold or a workplace retention
-rule, do not run the destructive parts of this repo at all.
+Deleting USB device history, extracting a keychain or a password manager, and damaging
+the filesystem journal are out of scope. Event Log clearing is not the default and is
+not part of `clear-all`; the only path is an explicit opt-in with a warning that it
+breaks incident response. See [SECURITY.md](../SECURITY.md) and
+[anti-forensics.md](anti-forensics.md). If you are under a legal hold or a workplace
+retention rule, do not run the destructive parts of this repo at all.

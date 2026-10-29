@@ -15,7 +15,12 @@ esac; done
 
 confirm() { $ASSUME_YES && return 0; read -r -p "Proceed? [y/N] " a; [[ "$a" =~ ^[Yy]$ ]]; }
 
-TARGETS=("$HOME/.bash_history" "$HOME/.zsh_history" "$HOME/.viminfo" "$HOME/.lesshst" "$HOME/.python_history")
+TARGETS=(
+  "$HOME/.bash_history" "$HOME/.zsh_history" "$HOME/.viminfo" "$HOME/.lesshst" "$HOME/.python_history"
+  "$HOME/.local/share/fish/fish_history" "$HOME/.config/fish/fish_history"
+  "$HOME/.sh_history" "$HOME/.ksh_history" "$HOME/.history" "$HOME/.csh_history"
+  "$HOME/.config/nushell/history.txt" "$HOME/.local/share/ion/history"
+)
 
 echo "== Shell & tool command history =="
 FOUND=()
