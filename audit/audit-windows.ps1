@@ -254,6 +254,8 @@ Write-Host "and does not delete them."
 Write-Host ""
 & (Join-Path $PSScriptRoot 'audit-recovery-windows.ps1') -DryRun:$DryRun -Yes:$Yes
 Write-Host ""
+& (Join-Path $PSScriptRoot 'audit-extra-windows.ps1') -DryRun:$DryRun -Yes:$Yes
+Write-Host ""
 Write-Host "Shadow copies and the other recovery structures above are reported only."
 Write-Host "This script does not delete them. Opt-in purge is a separate tool and is not part of clear-all."
 Write-Host "Audit only: counts, sizes, and paths. Contents, passwords, message bodies, and row values are not printed."

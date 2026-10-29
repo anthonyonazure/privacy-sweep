@@ -150,6 +150,9 @@ report_any "/System/Volumes/Data/.fseventsd"
 echo
 
 bash "$DIR/audit-recovery-macos.sh" "$@"
+echo
+bash "$DIR/audit-extra-macos.sh" "$@"
+echo
 
 echo "Local snapshots, Document Revisions, external Trash, sleepimage/swap,"
 echo "and FileVault on/off are reported above. They are not deleted."

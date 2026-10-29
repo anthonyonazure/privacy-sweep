@@ -228,6 +228,9 @@ fi
 echo
 
 bash "$DIR/audit-recovery-linux.sh" "$@"
+echo
+bash "$DIR/audit-extra-linux.sh" "$@"
+echo
 
 echo "Screenshot folders, journal size, login-record sizes, and crontab presence"
 echo "are reported above. Swap, LUKS status, and wipe-tool remnant names are too."

@@ -394,6 +394,36 @@ fi
 grep -q 'What cleaning cannot do' README.md audit/README.md || fail "cleaning limit section missing"
 grep -q 'after the program file has been deleted' audit/README.md || fail "execution-store note missing"
 
+echo "== extra audits are wired in and report-only =="
+grep -q 'audit-extra-macos.sh' audit/audit-macos.sh || fail "macOS audit does not run the extra report"
+grep -q 'audit-extra-linux.sh' audit/audit-linux.sh || fail "Linux audit does not run the extra report"
+grep -q 'audit-extra-windows.ps1' audit/audit-windows.ps1 || fail "Windows audit does not run the extra report"
+for needle in 'CoreAIPlatform.00' 'ConsoleHost_history.txt' TypedPaths WordWheelQuery MountPoints2 'Terminal Server Client' 'setupapi.dev.log' RegBack; do
+  grep -F -q "$needle" audit/audit-extra-windows.ps1 || fail "windows extra audit missing $needle"
+done
+if grep -nE 'reg (export|save|query)|Remove-Item|Set-Content|Out-File|Add-Content' audit/audit-extra-windows.ps1; then
+  fail "windows extra audit would export or write"
+fi
+for needle in 'chat.db' 'com.apple.Bluetooth.plist' 'com.apple.sharingd.plist' '.zsh_sessions' 'known_hosts'; do
+  grep -F -q "$needle" audit/audit-extra-macos.sh || fail "macOS extra audit missing $needle"
+done
+if grep -nE '(sqlite3|strings|cat|plutil|defaults)[[:space:]].*(chat\.db|Bluetooth|sharingd)' audit/audit-extra-macos.sh; then
+  fail "macOS extra audit would read Messages or Bluetooth contents"
+fi
+for needle in '/var/log/apt/history.log' '/var/log/dpkg.log' '/var/lib/bluetooth' 'keyrings' 'known_hosts'; do
+  grep -F -q "$needle" audit/audit-extra-linux.sh || fail "Linux extra audit missing $needle"
+done
+extra_home="$TMP/extra-home"
+mkdir -p "$extra_home/.ssh"
+printf '%s\n' 'host-name-must-not-print ssh-ed25519 AAAA' > "$extra_home/.ssh/known_hosts"
+printf '%s\n' ':ls secret-vim-command' > "$extra_home/.viminfo"
+extra="$(HOME="$extra_home" XDG_DATA_HOME="$extra_home/.local/share" XDG_CONFIG_HOME="$extra_home/.config" bash audit/audit-extra-linux.sh)"
+printf '%s\n' "$extra" | grep -A3 "known_hosts" | grep -q "Lines: 1" || fail "known_hosts line count"
+if printf '%s\n' "$extra" | grep -qE 'host-name-must-not-print|secret-vim-command'; then
+  fail "extra audit printed file contents"
+fi
+printf '%s\n' "$extra" | grep -q "Nothing here is deleted" || fail "extra audit missing the report-only note"
+
 echo "== lan dry-run =="
 lan="$(bash network/router-hygiene/check-lan.sh --dry-run)"
 printf '%s\n' "$lan" | grep -q "Gateway:" || fail "router check missed the gateway line"
