@@ -19,8 +19,9 @@ TRASH="${XDG_DATA_HOME:-$HOME/.local/share}/Trash"
 
 echo "== Trash =="
 if [[ ! -d "$TRASH" ]]; then echo "No Trash folder found. Nothing to do."; exit 0; fi
-SIZE=$(du -sh "$TRASH" 2>/dev/null | cut -f1)
-COUNT=$(find "$TRASH/files" -mindepth 1 2>/dev/null | wc -l | tr -d ' ')
+SIZE=$(du -sh "$TRASH" 2>/dev/null | cut -f1 || true)
+# find returns non-zero on an unreadable entry. Do not abort --dry-run.
+COUNT=$(find "$TRASH/files" -mindepth 1 2>/dev/null | wc -l | tr -d ' ' || true)
 echo "Target: $TRASH   Items: ${COUNT:-0}   Size: ${SIZE:-0}"
 
 if $DRY_RUN; then echo "(dry run) Would empty $TRASH/files and $TRASH/info."; exit 0; fi

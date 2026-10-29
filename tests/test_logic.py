@@ -54,7 +54,7 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(report.acr[0]["blocked"], 1)
 
     def test_plan_skips_urls_already_present(self) -> None:
-        catalog = pihole.load_lists(ROOT / "network" / "pihole-tv" / "lists.txt", include_vendor=False)
+        catalog = pihole.load_lists(ROOT / "network" / "pihole-tv" / "lists.txt", set())
         existing = json.loads((FIXTURE / "lists.json").read_text(encoding="utf-8"))["lists"]
         plan = pihole.plan_lists(catalog, existing)
         present = {row["url"] for row in plan["present"]}
@@ -64,11 +64,43 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(len(catalog), 2)
 
     def test_vendor_lists_are_opt_in(self) -> None:
-        plain = pihole.load_lists(ROOT / "network" / "pihole-tv" / "lists.txt", include_vendor=False)
-        wider = pihole.load_lists(ROOT / "network" / "pihole-tv" / "lists.txt", include_vendor=True)
+        lists = ROOT / "network" / "pihole-tv" / "lists.txt"
+        plain = pihole.load_lists(lists, set())
+        wider = pihole.load_lists(lists, set(pihole.BRANDS_WITH_LISTS))
         self.assertEqual(len(plain), 2)
-        self.assertEqual(len(wider), 5)
+        self.assertEqual(len(wider), 6)
         self.assertTrue(all(row["url"].startswith("https://") for row in wider))
+        vizio = pihole.load_lists(lists, {"vizio"})
+        self.assertEqual(len(vizio), 2)
+        samsung = pihole.load_lists(lists, {"samsung"})
+        urls = " ".join(row["url"] for row in samsung)
+        self.assertIn("native.samsung.txt", urls)
+        self.assertNotIn("native.lgwebos.txt", urls)
+
+    def test_brand_selection_and_keep_rules(self) -> None:
+        self.assertEqual(pihole.parse_brands(["samsung,lg"], False), {"samsung", "lg"})
+        self.assertEqual(pihole.parse_brands([], True), set(pihole.BRANDS_WITH_LISTS))
+        self.assertEqual(pihole.parse_brands(["vizio"], True), {"vizio"})
+        with self.assertRaises(pihole.PiHoleError):
+            pihole.parse_brands(["not-a-tv"], False)
+        keeps = pihole.load_keeps(ROOT / "network" / "pihole-tv" / "keep.txt")
+        allows = pihole.allow_rows(keeps)
+        domains = pihole.protected_domains(allows)
+        for name in (
+            "time.samsungcloudsolution.com",
+            "us.lgtvsdp.com",
+            "api.vizio.com",
+            "api.us.hismarttv.com",
+        ):
+            self.assertIn(name, domains)
+        self.assertNotIn("logs.roku.com", domains)
+        self.assertNotIn("acr0.samsungcloudsolution.com", domains)
+        self.assertTrue(any(row["domain"] == "logs.roku.com" for row in pihole.watch_rows(keeps)))
+        exact = next(row for row in allows if row["domain"] == "time.samsungcloudsolution.com")
+        tree = next(row for row in allows if row["domain"] == "samsungotn.net")
+        self.assertEqual(pihole.adguard_rule(exact), "@@time.samsungcloudsolution.com")
+        self.assertEqual(pihole.adguard_rule(tree), "@@||samsungotn.net^")
+        self.assertIn(r"samsungotn\.net$", pihole.tree_regex("samsungotn.net"))
 
     def test_gravity_insert_is_idempotent(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -82,13 +114,39 @@ class ReportTests(unittest.TestCase):
             )
             con.commit()
             con.close()
-            catalog = pihole.load_lists(ROOT / "network" / "pihole-tv" / "lists.txt", False)
+            catalog = pihole.load_lists(ROOT / "network" / "pihole-tv" / "lists.txt", set())
             plan = pihole.plan_lists(catalog, [])
             pihole.apply_gravity_file(db, plan, True, False)
             pihole.apply_gravity_file(db, plan, True, False)
             con = sqlite3.connect(db)
             self.assertEqual(con.execute("SELECT COUNT(*) FROM adlist").fetchone()[0], len(plan["add"]))
             self.assertEqual(con.execute("SELECT COUNT(*) FROM domainlist WHERE type = 3").fetchone()[0], 1)
+            con.close()
+
+    def test_gravity_allows_stay_exact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "gravity.db"
+            con = sqlite3.connect(db)
+            con.execute(
+                "CREATE TABLE adlist (id INTEGER PRIMARY KEY, address TEXT UNIQUE, enabled INTEGER, comment TEXT)"
+            )
+            con.execute(
+                "CREATE TABLE domainlist (id INTEGER PRIMARY KEY, type INTEGER, domain TEXT, enabled INTEGER, comment TEXT)"
+            )
+            con.commit()
+            con.close()
+            allows = [
+                row
+                for row in pihole.allow_rows(pihole.load_keeps(ROOT / "network" / "pihole-tv" / "keep.txt"))
+                if row["domain"] in ("samsungcloudsolution.com", "samsungotn.net")
+            ]
+            pihole.apply_gravity_file(db, {"add": [], "present": []}, False, False, allows)
+            pihole.apply_gravity_file(db, {"add": [], "present": []}, False, False, allows)
+            con = sqlite3.connect(db)
+            rows = {domain: kind for domain, kind in con.execute("SELECT domain, type FROM domainlist")}
+            self.assertEqual(rows["samsungcloudsolution.com"], 0)
+            self.assertEqual(rows[pihole.tree_regex("samsungotn.net")], 2)
+            self.assertEqual(len(rows), 2)
             con.close()
 
     def test_new_clients_and_baseline(self) -> None:

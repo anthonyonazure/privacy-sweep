@@ -27,10 +27,14 @@ There's a top-level launcher that detects your operating system and runs the rig
 ```bash
 ./privacy-sweep.sh --dry-run   # macOS or Linux: preview, delete nothing
 ./privacy-sweep.sh             # ask before each step
+./privacy-sweep.sh --dry-run --all-modules
+# macOS or Linux: dry-run the sweep and every opt-in module. Deletes nothing.
 ```
 
 ```powershell
 .\privacy-sweep.ps1 -DryRun    # Windows (run Terminal as Administrator): preview
+.\privacy-sweep.ps1 -DryRun -AllModules
+# Windows: dry-run every module, including the opt-in ones. Deletes nothing.
 ```
 
 Or go into a platform folder and run a single store's script on its own. Please read
@@ -59,9 +63,17 @@ of them require `sudo` unless the folder README says so explicitly.
 | [linux/](linux/) | Scripts | Bash. Works on GNOME/KDE desktops. |
 | [ios/](ios/) | Guide | iOS is sandboxed and encrypted; no script can reach these. Manual steps only. |
 | [android/](android/) | Guide + partial | Some clearing possible over `adb`; most is manual. A permission report is included. |
+| [android-tv/](android-tv/) | Report only | Android TV / Google TV package report over network `adb`. Flags telemetry, ads, and content rows. Disables nothing. |
 | [network/](network/) | Scripts + guides | Pi-hole lists and reports, a router checklist, and a LAN inventory. Your own network only. |
-| [audit/](audit/) | Report only | Counts and paths of the stores an examiner would look at. Deletes nothing. |
+| [audit/](audit/) | Report only | Counts and paths for execution stores, knowledgeC, Biome, FSEvents, login records, and recovery structures (snapshots, shadow copies, swap, encryption status). Deletes nothing. |
 | [browsers/](browsers/) | Scripts | History, cookies, and cache. Opt-in; not part of `clear-all`. |
+| [hdd-free-space/](hdd-free-space/) | Opt-in, off by default | Free-space fill for a hard disk. Refuses SSDs unless you override. **Not part of `clear-all`.** macOS is a pointer, not a wipe. |
+| [recovery-purge/](recovery-purge/) | Opt-in, dry-run unless `--apply` | VSS, APFS local snapshots, Document Revisions. Typed phrase. **Not part of `clear-all`.** |
+| [browser-deep/](browser-deep/) | Opt-in | LevelDB, IndexedDB, session restore, Crashpad. Bookmarks stay. Refuses a running browser. |
+| [cloud-sync/](cloud-sync/) | Report only | Local OneDrive, iCloud, Dropbox, and Google Drive cache presence. Clearing local does not clear the account. |
+| [persistence/](persistence/) | Report only | Launch agents, scheduled tasks, Run keys, cron presence. Never deletes. |
+| [memory-residue/](memory-residue/) | Audit, plus opt-in | Pagefile, hiberfil, sleepimage, swap. Opt-in actions are dry-run unless `--apply`. |
+| [local-artifacts/](local-artifacts/) | Audit, plus opt-in | Screenshots, clipboard managers, Office MRU, chat caches, mail presence. Mail is never deleted. |
 
 ## Modules beyond the per-OS sweep
 
@@ -70,11 +82,22 @@ separate because they either talk to your network, only report, or sign you out 
 
 | Module | What you run | What it does |
 | --- | --- | --- |
-| [network/pihole-tv/](network/pihole-tv/) | `add-blocklists.sh`, `acr-clients.sh` | Adds maintained smart-TV / ACR blocklists to a Pi-hole you administer, and reports which LAN clients looked those names up. **Dry-run unless you pass `--ask` or `--yes`.** |
+| [network/pihole-tv/](network/pihole-tv/) | `add-blocklists.sh`, `acr-clients.sh` | On-TV ACR settings, then brand-selectable blocklists and a keep-list on a Pi-hole or AdGuard Home you administer, and a report of which LAN clients looked those names up. **Dry-run unless you pass `--ask` or `--yes`.** |
+| [android-tv/](android-tv/) | `audit-tv.sh` | Over network `adb`, lists installed and enabled packages and flags known telemetry, ad, and content-row packages. **Disables nothing.** Not part of `clear-all`. |
 | [network/pihole-report/](network/pihole-report/) | `weekly-report.sh` | Markdown report: top clients, top blocked domains, clients new since last run, ACR hits. Example cron and systemd timer included. |
 | [network/router-hygiene/](network/router-hygiene/) | `check-lan.sh` plus the checklist | Admin-password, firmware, UPnP, remote admin, forced DNS, guest Wi-Fi, WPS. The script only checks what a LAN host can see. |
 | [network/device-inventory/](network/device-inventory/) | `inventory.sh` | ARP, plus mDNS/SSDP and `nmap -sn` when you allow probes. Flags unnamed devices and TVs on this LAN. |
-| [audit/](audit/) | `audit.sh` or `audit-windows.ps1` | Counts and paths, including Windows execution stores, macOS diagnostic and knowledge databases, and Linux journal, login-record, and crontab presence. **Never deletes.** |
+| [audit/](audit/) | `audit.sh` or `audit-windows.ps1` | Counts and paths for Prefetch, Jump Lists, USBSTOR, recent items, Wi-Fi profiles, quarantine, Quick Look, thumbnails, shell history, Windows execution stores (ShimCache, Amcache, SRUM, BAM/DAM, UserAssist, ShellBags), macOS unified logs, knowledgeC, Biome, and FSEvents, Linux journal, login-record, and crontab presence, plus shadow copies, local snapshots, Document Revisions, swap/pagefile presence, search-index size, and wipe-tool remnant names. **Never deletes.** |
+| [docs/leave-no-trace.md](docs/leave-no-trace.md) | read it | Five layers from "log less" through retiring a drive. SSD honesty, wipe fingerprints, and why not to plant decoys. Advice only. |
+| [docs/reduce-future-logging.md](docs/reduce-future-logging.md) | read it | Telemetry switches and index exclusions. This repo does not flip them. |
+| [docs/anti-forensics.md](docs/anti-forensics.md) | read it | What examiners compare after a wipe, and why timestomp, decoys, and journal mutilation are out of scope. |
+| [recovery-purge/](recovery-purge/) | `purge-macos.sh`, `purge-vss.ps1` | Opt-in delete of APFS local snapshots, Document Revisions, or Volume Shadow Copies. Dry-run unless `--apply` / `-Apply`, plus a typed phrase. **Not part of `clear-all`.** |
+| [browser-deep/](browser-deep/) | `clear-browser-deep.sh` / `.ps1` | LevelDB, IndexedDB, service workers, session restore, Crashpad. Bookmarks are kept. Refuses a running browser. |
+| [cloud-sync/](cloud-sync/) | `audit-cloud.sh` / `.ps1` | Presence and size of local sync logs and databases. The cloud copy stays. |
+| [persistence/](persistence/) | `audit-persistence.sh` / `.ps1` | Login items, scheduled tasks, Run keys, user units, cron presence. Deletes nothing. |
+| [memory-residue/](memory-residue/) | `memory.sh`, `memory-windows.ps1` | sleepimage, swap, pagefile, hiberfil, crash dumps. Opt-in disable or purge is dry-run unless you apply it. |
+| [local-artifacts/](local-artifacts/) | `audit-local.sh` / `.ps1`, `clear-local.sh` / `.ps1` | Screenshots, clipboard managers, notifications, Office MRU, chat caches. Mail is listed and never deleted. |
+| [hdd-free-space/](hdd-free-space/) | `wipe-linux.sh`, `wipe-windows.ps1` | Opt-in free-space fill. Dry run first. Refuses SSDs unless you pass `--i-know-this-is-ssd`. **Never part of `clear-all`.** Does not purge snapshots. |
 | [browsers/](browsers/) | `clear-browsers.sh` / `.ps1` | Chrome, Edge, Firefox, Safari, Brave: history, cookies, cache. Refuses to run while that browser is open. |
 | [linux/forget-wifi.sh](linux/forget-wifi.sh), [macos/forget-wifi.sh](macos/forget-wifi.sh), [windows/forget-wifi.ps1](windows/forget-wifi.ps1) | one script per OS | Lists saved Wi-Fi networks, then forgets them. Keeps the network you are using unless you ask. |
 | [android/audit-permissions.sh](android/audit-permissions.sh) | over `adb` | Lists accessibility, device-admin, SMS, call-log, notification, and overlay access. Flags installs that did not come from Play. Removes nothing. |
@@ -99,8 +122,10 @@ A missing store can stand out too. No Prefetch, an empty shell history, and an e
 do not look like ordinary use. The [audit](audit/) report shows what is still there, including
 Windows execution records that can name a program after that program was deleted (ShimCache,
 Amcache, SRUM, BAM/DAM, UserAssist, ShellBags), macOS unified logs, knowledgeC, Biome, and
-FSEvents, and Linux login-record files. privacy-sweep reports those and does not remove them.
-See [SECURITY.md](SECURITY.md).
+FSEvents, and Linux login-record files. The same report lists recovery structures (snapshots,
+shadow copies, swap, pagefile, encryption status) and wipe-tool remnant names. The audit
+reports those and does not remove them. Snapshot and shadow-copy deletion is a separate
+opt-in tool and is not part of `clear-all`. See [SECURITY.md](SECURITY.md).
 
 ## The real fix: encryption at rest
 
@@ -109,7 +134,13 @@ control that covers the entire list at once is **full-disk encryption**: FileVau
 BitLocker on Windows, LUKS on Linux, and the on-by-default encryption on modern iOS and Android.
 When the device is shut down, every one of these stores is unreadable without your password.
 These scripts reduce what a *logged-in* session leaves lying around; encryption protects the disk
-itself.
+itself. [docs/leave-no-trace.md](docs/leave-no-trace.md) is the longer version: what still
+survives a delete, why filling free space on an SSD does not finish the job, and what
+"destroy the key" means when you retire a drive. The default sweep still does not fill
+free space and does not delete snapshots or shadow copies. `--dry-run --all-modules`
+(Windows: `-DryRun -AllModules`) previews those opt-in tools and still deletes nothing.
+[docs/reduce-future-logging.md](docs/reduce-future-logging.md) is the "log less" layer.
+[docs/anti-forensics.md](docs/anti-forensics.md) is why a wipe leaves its own marks.
 
 ## License
 

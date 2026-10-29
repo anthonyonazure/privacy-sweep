@@ -10,7 +10,7 @@ it. A tick here is you, looking at the page.
 - [ ] **UPnP off.** UPnP lets a device ask the router to open a port toward the internet. Turn it off unless you have a specific reason and you know which device needs it.
 - [ ] **WAN / remote management off.** No admin page on the internet side, no "manage from anywhere" cloud toggle you do not use, no TR-069 / ISP remote support left on if the router lets you disable it.
 - [ ] **DNS forced to Pi-hole.** DHCP should hand out only the Pi-hole. In the firewall, block or redirect outbound DNS (port 53) that is not going to the Pi-hole, or a TV can ignore DHCP and use `8.8.8.8` anyway. DNS-over-HTTPS is a separate hole this checkbox does not close.
-- [ ] **IoT and TVs on guest Wi-Fi or their own VLAN.** A TV on the main LAN can see other devices. Guest isolation is the point.
+- [ ] **IoT and TVs on guest Wi-Fi or their own VLAN.** A TV on the main LAN can see other devices. Guest isolation is the point. Casting (Google Cast, AirPlay, and similar) uses mDNS, which that isolation drops, so a phone on the main Wi-Fi will not see a TV on the guest network unless you bridge mDNS. Leave the bridge off unless you need casting. The smart-TV steps are in [pihole-tv](../pihole-tv/README.md).
 - [ ] **WPS off.** WPS is a second way onto the Wi-Fi, and the PIN is the weak one.
 
 Also worth doing while you are there: WPA2 or WPA3, not WEP or WPA; a long Wi-Fi passphrase; the

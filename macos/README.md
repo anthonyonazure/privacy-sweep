@@ -44,7 +44,7 @@ Run everything without prompts:
 | Script | What it does |
 | --- | --- |
 | [forget-wifi.sh](forget-wifi.sh) | Lists preferred Wi-Fi networks and removes them. Keeps the one you are joined to unless you pass `--include-current`. |
-| [../audit/audit-macos.sh](../audit/audit-macos.sh) | Report only: quarantine log, recent items, Quick Look, shell history, plus presence and size of unified logs, knowledgeC, Biome, and FSEvents. |
+| [../audit/audit-macos.sh](../audit/audit-macos.sh) | Report only: quarantine log, recent items, Quick Look, shell history, local snapshots, Document Revisions size, FileVault on/off, plus presence and size of unified logs, knowledgeC, Biome, and FSEvents. Counts and paths. Deletes nothing. |
 | [../browsers/clear-browsers.sh](../browsers/clear-browsers.sh) | History, cookies, and cache, including Safari. Quits if that browser is open. |
 
 ## What these scripts deliberately do NOT touch
@@ -55,8 +55,11 @@ Run everything without prompts:
   reports presence and size only and does not delete them.
 - **Keychain.** Your saved passwords. Clearing it would lock you out of Wi-Fi and apps. Manage it in
   the Passwords app instead.
-- **APFS snapshots and Time Machine.** Managed with `tmutil`; out of scope here so a stray run can't
-  destroy your backups.
+- **APFS snapshots, local Time Machine snapshots, and Document Revisions.** `clear-all`
+  does not delete these. The audit reports whether they are present. The opt-in tool is
+  [../recovery-purge/purge-macos.sh](../recovery-purge/purge-macos.sh): dry-run unless
+  `--apply`, plus a typed phrase. It is not part of `clear-all`. See
+  [docs/leave-no-trace.md](../docs/leave-no-trace.md).
 
 ## Manual step scripts can't do well
 

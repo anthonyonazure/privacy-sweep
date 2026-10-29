@@ -107,20 +107,20 @@ function Add-Chromium {
   $guest = Join-Path $Root "Guest Profile"
   if (Test-Path -LiteralPath $guest) { $profiles += $guest }
   $found = $false
-  foreach ($profile in $profiles) {
-    if (-not (Test-Path -LiteralPath $profile -PathType Container)) { continue }
+  foreach ($browserProfile in $profiles) {
+    if (-not (Test-Path -LiteralPath $browserProfile -PathType Container)) { continue }
     $found = $true
-    Write-Host "  Profile: $profile"
-    Add-File (Join-Path $profile "History")
-    Add-File (Join-Path $profile "History-journal")
-    Add-File (Join-Path $profile "Cookies")
-    Add-File (Join-Path $profile "Cookies-journal")
-    Add-File (Join-Path $profile "Network\Cookies")
-    Add-File (Join-Path $profile "Network\Cookies-journal")
-    Add-Dir (Join-Path $profile "Cache")
-    Add-Dir (Join-Path $profile "Code Cache")
-    Add-Dir (Join-Path $profile "GPUCache")
-    Add-Dir (Join-Path $profile "Service Worker\CacheStorage")
+    Write-Host "  Profile: $browserProfile"
+    Add-File (Join-Path $browserProfile "History")
+    Add-File (Join-Path $browserProfile "History-journal")
+    Add-File (Join-Path $browserProfile "Cookies")
+    Add-File (Join-Path $browserProfile "Cookies-journal")
+    Add-File (Join-Path $browserProfile "Network\Cookies")
+    Add-File (Join-Path $browserProfile "Network\Cookies-journal")
+    Add-Dir (Join-Path $browserProfile "Cache")
+    Add-Dir (Join-Path $browserProfile "Code Cache")
+    Add-Dir (Join-Path $browserProfile "GPUCache")
+    Add-Dir (Join-Path $browserProfile "Service Worker\CacheStorage")
   }
   if (-not $found) { Write-Host "  No profiles under $Root." }
 }
@@ -214,22 +214,22 @@ if (Test-Wanted "firefox") {
     $script:Refused = $true
   } else {
     $found = $false
-    foreach ($profile in (Get-FirefoxProfiles)) {
-      if (-not (Test-Path -LiteralPath $profile -PathType Container)) { continue }
-      if (-not (Test-UnderUser $profile)) { Write-Host "Skipping $profile (outside your profile)."; continue }
+    foreach ($browserProfile in (Get-FirefoxProfiles)) {
+      if (-not (Test-Path -LiteralPath $browserProfile -PathType Container)) { continue }
+      if (-not (Test-UnderUser $browserProfile)) { Write-Host "Skipping $browserProfile (outside your profile)."; continue }
       $found = $true
-      Write-Host "  Profile: $profile"
-      $places = Join-Path $profile "places.sqlite"
+      Write-Host "  Profile: $browserProfile"
+      $places = Join-Path $browserProfile "places.sqlite"
       if (Test-Path -LiteralPath $places) {
         $script:Actions += "ff|$places"
         Write-Host "  $places"
         Write-Host "    history rows only; bookmarks in this file are kept"
       }
-      Add-File (Join-Path $profile "cookies.sqlite")
-      Add-File (Join-Path $profile "cookies.sqlite-wal")
-      Add-File (Join-Path $profile "cookies.sqlite-shm")
-      Add-Dir (Join-Path $profile "cache2")
-      Add-Dir (Join-Path $profile "startupCache")
+      Add-File (Join-Path $browserProfile "cookies.sqlite")
+      Add-File (Join-Path $browserProfile "cookies.sqlite-wal")
+      Add-File (Join-Path $browserProfile "cookies.sqlite-shm")
+      Add-Dir (Join-Path $browserProfile "cache2")
+      Add-Dir (Join-Path $browserProfile "startupCache")
     }
     if (-not $found) { Write-Host "  Not installed (no profiles.ini)." }
   }

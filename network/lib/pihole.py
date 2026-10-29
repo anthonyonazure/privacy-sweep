@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sqlite3
 import ssl
 import sys
@@ -27,14 +28,34 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
+
+import adguard
 
 BLOCKED_STATUSES = (1, 4, 5, 6, 7, 8, 9, 10, 11, 15, 16, 18)
 ALPHONSO_REGEX = r"(^|\.)alphonso\.tv$"
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 DEFAULT_LISTS = REPO / "network" / "pihole-tv" / "lists.txt"
+DEFAULT_KEEPS = REPO / "network" / "pihole-tv" / "keep.txt"
 DEFAULT_SUFFIXES = REPO / "network" / "pihole-tv" / "acr-suffixes.txt"
+KNOWN_BRANDS = ("samsung", "lg", "roku", "firetv", "vizio", "hisense")
+BRANDS_WITH_LISTS = ("samsung", "lg", "roku", "firetv")
+NO_NATIVE_LIST = {
+    "vizio": (
+        "Vizio has no HaGeZi native list. native.vizio.txt returned HTTP 404 on 2026-10-27. "
+        "Coverage is the combined lists (tvinteractive.tv / Inscape)."
+    ),
+    "hisense": (
+        "Hisense VIDAA has no HaGeZi native list. native.vidaa.txt and native.hisense.txt "
+        "returned HTTP 404 on 2026-10-27. Do not block all of vidaahub.com or hismarttv.com. "
+        "The combined lists carry the Hisense names they know about."
+    ),
+}
+DOMAIN_RE = re.compile(
+    r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$"
+)
 DEFAULT_DB = Path("/etc/pihole/pihole-FTL.db")
 DEFAULT_GRAVITY = Path("/etc/pihole/gravity.db")
 
@@ -85,27 +106,112 @@ def _check_url(url: str) -> str:
     return url
 
 
-def load_lists(path: Path, include_vendor: bool) -> list[dict]:
-    """Read lists.txt. Lines are: tier|name|note|url."""
+def parse_brands(values: list[str], vendor: bool) -> set[str]:
+    """Brand ids whose HaGeZi list should be added. Empty means the combined lists only."""
+    chosen: list[str] = []
+    for value in values:
+        for part in value.split(","):
+            part = part.strip().lower()
+            if part:
+                chosen.append(part)
+    if chosen:
+        bad = [brand for brand in chosen if brand not in KNOWN_BRANDS]
+        if bad:
+            known = ", ".join(KNOWN_BRANDS)
+            raise PiHoleError(f"Unknown brand {', '.join(bad)}. Known brands: {known}.")
+        return set(chosen)
+    if vendor:
+        return set(BRANDS_WITH_LISTS)
+    return set()
+
+
+def load_lists(path: Path, brands: set[str]) -> list[dict]:
+    """Read lists.txt. Lines are: tier|brand|name|note|url.
+
+    Default rows are always included. A brand row is included when its brand
+    was selected. ``brands`` empty means the combined lists only.
+    """
     rows = []
     for lineno, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
         parts = line.split("|")
-        if len(parts) != 4:
-            raise PiHoleError(f"{path}:{lineno}: expected tier|name|note|url")
-        tier, name, note, url = (p.strip() for p in parts)
-        if tier not in ("default", "vendor"):
-            raise PiHoleError(f"{path}:{lineno}: tier must be default or vendor")
-        if tier == "vendor" and not include_vendor:
+        if len(parts) != 5:
+            raise PiHoleError(f"{path}:{lineno}: expected tier|brand|name|note|url")
+        tier, brand, name, note, url = (part.strip() for part in parts)
+        if tier not in ("default", "brand"):
+            raise PiHoleError(f"{path}:{lineno}: tier must be default or brand")
+        if tier == "default":
+            if brand != "*":
+                raise PiHoleError(f"{path}:{lineno}: a default list uses brand *")
+        elif brand not in KNOWN_BRANDS:
+            raise PiHoleError(f"{path}:{lineno}: unknown brand {brand}")
+        elif brand not in brands:
             continue
         if not url.startswith("https://"):
             raise PiHoleError(f"{path}:{lineno}: refusing a non-https list URL")
-        rows.append({"tier": tier, "name": name, "note": note, "url": url})
+        rows.append({"tier": tier, "brand": brand, "name": name, "note": note, "url": url})
     if not rows:
         raise PiHoleError(f"No lists selected in {path}")
     return rows
+
+
+def load_keeps(path: Path) -> list[dict]:
+    """Read keep.txt. Lines are: action|brand|domain|scope|note."""
+    rows = []
+    seen: set[tuple[str, str]] = set()
+    for lineno, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split("|")
+        if len(parts) != 5:
+            raise PiHoleError(f"{path}:{lineno}: expected action|brand|domain|scope|note")
+        action, brand, domain, scope, note = (part.strip() for part in parts)
+        if action not in ("allow", "watch"):
+            raise PiHoleError(f"{path}:{lineno}: action must be allow or watch")
+        if brand not in KNOWN_BRANDS:
+            raise PiHoleError(f"{path}:{lineno}: unknown brand {brand}")
+        if scope not in ("exact", "tree"):
+            raise PiHoleError(f"{path}:{lineno}: scope must be exact or tree")
+        domain = domain.lower().rstrip(".")
+        if not DOMAIN_RE.match(domain):
+            raise PiHoleError(f"{path}:{lineno}: domain looks unsafe: {domain}")
+        key = (action, domain)
+        if key in seen:
+            raise PiHoleError(f"{path}:{lineno}: duplicate {action} domain {domain}")
+        seen.add(key)
+        rows.append(
+            {"action": action, "brand": brand, "domain": domain, "scope": scope, "note": note}
+        )
+    if not rows:
+        raise PiHoleError(f"No keep-list rows in {path}")
+    return rows
+
+
+def allow_rows(keeps: list[dict]) -> list[dict]:
+    return [row for row in keeps if row["action"] == "allow"]
+
+
+def watch_rows(keeps: list[dict]) -> list[dict]:
+    return [row for row in keeps if row["action"] == "watch"]
+
+
+def tree_regex(domain: str) -> str:
+    """Pi-hole POSIX regex: this name and its subdomains, not a lookalike."""
+    return r"(^|\.)" + domain.replace(".", r"\.") + "$"
+
+
+def adguard_rule(row: dict) -> str:
+    """Exception rule. Exact names stay exact so a child ad host stays blocked."""
+    if row["scope"] == "tree":
+        return f"@@||{row['domain']}^"
+    return f"@@{row['domain']}"
+
+
+def protected_domains(allows: list[dict]) -> set[str]:
+    return {row["domain"] for row in allows}
 
 
 def load_suffixes(path: Path) -> list[tuple[str, str]]:
@@ -594,6 +700,32 @@ class Api:
             )
         print(f"Added regex deny: {pattern}")
 
+    def _domain_present(self, kind_path: str, domain: str) -> bool:
+        status, payload = self._request("GET", kind_path)
+        if status != 200:
+            raise PiHoleError(f"GET {kind_path} failed (HTTP {status}). Allow rules were not changed.")
+        for row in payload.get("domains") or []:
+            if isinstance(row, dict) and row.get("domain") == domain:
+                return True
+        return False
+
+    def add_allow(self, domain: str, kind: str, comment: str) -> None:
+        """kind is exact or regex. Exact allow does not cover subdomains."""
+        if kind not in ("exact", "regex"):
+            raise PiHoleError(f"Refusing allow kind {kind}.")
+        path = f"/api/domains/allow/{kind}"
+        if self._domain_present(path, domain):
+            print(f"Allow already present ({kind}): {domain}")
+            return
+        body = {"domain": domain, "comment": comment, "groups": [0], "enabled": True}
+        status, payload = self._request("POST", path, body)
+        if status not in (200, 201):
+            raise PiHoleError(
+                f"Could not allow {domain} ({kind}) "
+                f"(HTTP {status}): {json.dumps(payload)[:400]}"
+            )
+        print(f"Allowed ({kind}): {domain}")
+
     def gravity(self) -> None:
         status, payload = self._request("POST", "/api/action/gravity", {})
         if status not in (200, 201, 202):
@@ -880,46 +1012,124 @@ def plan_lists(catalog: list[dict], existing: list[dict]) -> dict:
     return {"add": add, "present": present}
 
 
-def print_plan(plan: dict, regex: bool, gravity: bool, connected: str) -> None:
+def print_plan(
+    plan: dict,
+    regex: bool,
+    gravity: bool,
+    connected: str,
+    brands: set[str],
+    allows: list[dict],
+    watches: list[dict],
+    refresh_word: str,
+) -> None:
     print(f"== Smart-TV / ACR blocklists ({connected}) ==")
+    if brands:
+        print("Brands selected: " + ", ".join(sorted(brands)))
+        for brand in sorted(brands):
+            if brand in NO_NATIVE_LIST and not any(row["brand"] == brand for row in plan["add"] + plan["present"]):
+                print(f"  {NO_NATIVE_LIST[brand]}")
+    else:
+        print("No brand list selected. Pass --brand samsung,lg,roku,firetv,vizio,hisense or --vendor.")
+    print(
+        "Vizio and Hisense VIDAA have no HaGeZi native list (those URLs returned HTTP 404 on 2026-10-27). "
+        "They rely on the combined lists."
+    )
     if plan["present"]:
-        print("Already on this Pi-hole:")
+        print("Already installed:")
         for row in plan["present"]:
             print(f"  {row['name']}")
             print(f"    {row['url']}")
     else:
-        print("None of the selected lists are on this Pi-hole yet.")
+        print("None of the selected lists are installed yet.")
     if plan["add"]:
         print("Would add:")
         for row in plan["add"]:
-            print(f"  {row['name']} [{row['tier']}]")
+            label = row["tier"] if row["brand"] == "*" else f"{row['tier']}:{row['brand']}"
+            print(f"  {row['name']} [{label}]")
             print(f"    {row['url']}")
             print(f"    {row['note']}")
     else:
         print("Nothing new to add.")
-    if regex:
+    if allows:
+        print("Would allow (keep-list; these are never added as blocks):")
+        for row in allows:
+            scope = "this name and its subdomains" if row["scope"] == "tree" else "this name only"
+            print(f"  {row['domain']} [{row['brand']}, {scope}]")
+            print(f"    {row['note']}")
+    if watches:
+        print("Not allowlisted:")
+        for row in watches:
+            print(f"  {row['domain']} [{row['brand']}]")
+            print(f"    {row['note']}")
+    regex_live = regex and "alphonso.tv" not in protected_domains(allows)
+    if regex_live:
         print(f"Would add regex deny: {ALPHONSO_REGEX}")
         print("  Covers rotating Alphonso hosts (tkacrNNN.alphonso.tv) that a fixed list misses.")
-    if gravity and plan["add"]:
-        print("Would ask Pi-hole to run gravity so the new lists take effect.")
+        print("  On AdGuard Home this is the adblock rule ||alphonso.tv^.")
+    elif regex:
+        print("Alphonso regex skipped: alphonso.tv is on the keep-list.")
+    if gravity and (plan["add"] or allows or regex_live):
+        print(f"Would ask the resolver to {refresh_word} so the changes take effect.")
     print("No change is made in a dry run.")
 
 
-def apply_lists_api(api: Api, plan: dict, regex: bool, gravity: bool) -> None:
+def apply_lists_api(api: Api, plan: dict, regex: bool, gravity: bool, allows: list[dict]) -> None:
     for row in plan["add"]:
         comment = f"privacy-sweep: {row['name']}"[:180]
         api.add_list(row["url"], comment)
         print(f"Added: {row['name']}")
-    if regex:
+    for row in allows:
+        comment = f"privacy-sweep keep: {row['brand']} {row['domain']}"[:180]
+        if row["scope"] == "tree":
+            api.add_allow(tree_regex(row["domain"]), "regex", comment)
+        else:
+            api.add_allow(row["domain"], "exact", comment)
+    if regex and "alphonso.tv" not in protected_domains(allows):
         api.add_regex(ALPHONSO_REGEX, "privacy-sweep: Alphonso ACR suffix")
-    if gravity and (plan["add"] or regex):
+    if gravity and (plan["add"] or allows or regex):
         api.gravity()
-    if not plan["add"] and not regex:
+    if not plan["add"] and not allows and not regex:
         print("Nothing to add.")
 
 
-def apply_gravity_file(db_path: Path, plan: dict, regex: bool, run_gravity: bool) -> None:
-    """Insert rows into a local gravity.db. Used for Pi-hole v5, which has no add-list HTTP API."""
+def _insert_domain(con: sqlite3.Connection, dcols: list[str], kind: int, domain: str, comment: str) -> bool:
+    have = con.execute(
+        "SELECT id FROM domainlist WHERE domain = ? AND type = ?",
+        (domain, kind),
+    ).fetchone()
+    if have:
+        print(f"Already present (type {kind}): {domain}")
+        return False
+    fields = ["type", "domain"]
+    values: list[object] = [kind, domain]
+    if "enabled" in dcols:
+        fields.append("enabled")
+        values.append(1)
+    if "comment" in dcols:
+        fields.append("comment")
+        values.append(comment[:180])
+    marks = ",".join("?" * len(fields))
+    con.execute(
+        f"INSERT INTO domainlist ({','.join(fields)}) VALUES ({marks})",
+        values,
+    )
+    return True
+
+
+def apply_gravity_file(
+    db_path: Path,
+    plan: dict,
+    regex: bool,
+    run_gravity: bool,
+    allows: list[dict] | None = None,
+) -> None:
+    """Insert rows into a local gravity.db. Used for Pi-hole v5, which has no add-list HTTP API.
+
+    Allow rows use domainlist type 0 (exact) or type 2 (regex). The Alphonso
+    deny stays type 3. ``allows`` defaults to empty so older callers keep the
+    previous behavior.
+    """
+    allows = list(allows or [])
     con = sqlite3.connect(str(db_path), timeout=5)
     try:
         cols = [_safe_ident(row[1]) for row in con.execute("PRAGMA table_info(adlist)")]
@@ -950,37 +1160,32 @@ def apply_gravity_file(db_path: Path, plan: dict, regex: bool, run_gravity: bool
                 values,
             )
             print(f"Inserted into {db_path}: {row['name']}")
-        if regex:
+        regex_live = regex and "alphonso.tv" not in protected_domains(allows)
+        if allows or regex_live:
             dcols = [_safe_ident(row[1]) for row in con.execute("PRAGMA table_info(domainlist)")]
             if "domain" not in dcols or "type" not in dcols:
-                raise PiHoleError(f"{db_path} has no domainlist table for the Alphonso regex.")
-            have = con.execute(
-                "SELECT id FROM domainlist WHERE domain = ? AND type = 3",
-                (ALPHONSO_REGEX,),
-            ).fetchone()
-            if have:
-                print("Alphonso regex already present.")
-            else:
-                fields = ["type", "domain"]
-                values = [3, ALPHONSO_REGEX]
-                if "enabled" in dcols:
-                    fields.append("enabled")
-                    values.append(1)
-                if "comment" in dcols:
-                    fields.append("comment")
-                    values.append("privacy-sweep: Alphonso ACR suffix")
-                marks = ",".join("?" * len(fields))
-                con.execute(
-                    f"INSERT INTO domainlist ({','.join(fields)}) VALUES ({marks})",
-                    values,
-                )
-                print(f"Inserted regex deny: {ALPHONSO_REGEX}")
+                raise PiHoleError(f"{db_path} has no domainlist table for allow or regex rows.")
+            for row in allows:
+                stored = tree_regex(row["domain"]) if row["scope"] == "tree" else row["domain"]
+                kind = 2 if row["scope"] == "tree" else 0
+                if _insert_domain(
+                    con,
+                    dcols,
+                    kind,
+                    stored,
+                    f"privacy-sweep keep: {row['brand']} {row['domain']}",
+                ):
+                    print(f"Inserted allow ({row['scope']}): {row['domain']}")
+            if regex_live:
+                if _insert_domain(con, dcols, 3, ALPHONSO_REGEX, "privacy-sweep: Alphonso ACR suffix"):
+                    print(f"Inserted regex deny: {ALPHONSO_REGEX}")
         con.commit()
     finally:
         con.close()
-    if run_gravity and db_path.resolve() == DEFAULT_GRAVITY.resolve() and (plan["add"] or regex):
+    changed = bool(plan["add"] or allows or (regex and "alphonso.tv" not in protected_domains(allows)))
+    if run_gravity and db_path.resolve() == DEFAULT_GRAVITY.resolve() and changed:
         print("gravity.db is the live file. Run `pihole -g` on this machine to rebuild gravity.")
-    elif plan["add"] or regex:
+    elif changed:
         print("This is not the live /etc/pihole/gravity.db, so gravity was not started.")
         print("Copy the rows across, or run the script on the Pi-hole against the live database, then `pihole -g`.")
 
@@ -1002,13 +1207,210 @@ def _names_from_db(con: sqlite3.Connection) -> dict[str, dict]:
     return {ip: {"name": name, "mac": "", "vendor": ""} for ip, name in _client_names(con).items()}
 
 
+def _selection(args: argparse.Namespace) -> tuple[set[str], list[dict], list[dict], list[dict]]:
+    brands = parse_brands(list(args.brand or []), bool(args.vendor))
+    catalog = load_lists(Path(args.lists), brands)
+    keeps = load_keeps(Path(args.keeps))
+    return brands, catalog, allow_rows(keeps), watch_rows(keeps)
+
+
+def _resolver(args: argparse.Namespace) -> str:
+    """Pi-hole unless the caller passed --resolver adguard. ADGUARD_URL alone does not switch."""
+    return args.resolver or "pihole"
+
+
+def _regex_live(regex: bool, allows: list[dict]) -> bool:
+    return bool(regex) and "alphonso.tv" not in protected_domains(allows)
+
+
+def _refresh_word(resolver: str) -> str:
+    return "reload filters" if resolver == "adguard" else "update gravity"
+
+
+def _adguard_client() -> adguard.AdGuard:
+    base = os.environ.get("ADGUARD_URL", "").strip()
+    if not base:
+        raise PiHoleError("Set ADGUARD_URL (for example http://192.168.1.3:3000).")
+    try:
+        return adguard.AdGuard(base)
+    except adguard.AdGuardError as exc:
+        raise PiHoleError(str(exc)) from exc
+
+
+def _apply_adguard(client: adguard.AdGuard, plan: dict, regex: bool, gravity: bool, allows: list[dict]) -> None:
+    """Add missing filters, then append keep-list exceptions without dropping other user rules."""
+    try:
+        have = {str(row.get("url") or "").rstrip("/") for row in client.filters()}
+        added = False
+        for row in plan["add"]:
+            if row["url"].rstrip("/") in have:
+                print(f"Already present: {row['name']}")
+                continue
+            client.add_filter(row["url"], f"privacy-sweep: {row['name']}")
+            print(f"Added: {row['name']}")
+            added = True
+        existing = client.user_rules()
+        merged = list(existing)
+        changed = False
+        for row in allows:
+            rule = adguard_rule(row)
+            if rule in merged:
+                print(f"Allow rule already present: {rule}")
+                continue
+            merged.append(rule)
+            changed = True
+            print(f"Allow rule: {rule}")
+        if _regex_live(regex, allows):
+            rule = "||alphonso.tv^"
+            if rule not in merged:
+                merged.append(rule)
+                changed = True
+                print(f"Added block rule: {rule}")
+            else:
+                print(f"Block rule already present: {rule}")
+        if changed:
+            client.set_user_rules(merged)
+        if gravity and (added or changed):
+            client.refresh()
+            print("Asked AdGuard Home to reload filters.")
+        if not added and not changed:
+            print("Nothing to add.")
+    except adguard.AdGuardError as exc:
+        raise PiHoleError(str(exc)) from exc
+
+
+def _ag_domain(row: dict) -> str:
+    question = row.get("question")
+    if isinstance(question, dict):
+        name = question.get("name") or question.get("host") or ""
+    elif isinstance(question, str):
+        name = question
+    else:
+        name = row.get("domain") or ""
+    return str(name).lower().rstrip(".")
+
+
+def _ag_client(row: dict) -> tuple[str, str]:
+    info = row.get("client_info") if isinstance(row.get("client_info"), dict) else {}
+    ip = str(row.get("client") or info.get("ip") or "")
+    name = str(info.get("name") or row.get("client_name") or "")
+    return ip, name
+
+
+def _ag_time(value: object) -> int | None:
+    if isinstance(value, (int, float)):
+        return int(value)
+    if not isinstance(value, str) or not value:
+        return None
+    text = value.replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return int(parsed.timestamp())
+
+
+def report_from_adguard(
+    client: adguard.AdGuard,
+    start: int,
+    end: int,
+    suffixes: list[tuple[str, str]],
+    top: int,
+) -> Report:
+    """ACR rows from /control/querylog. Totals cover only the rows that search returned."""
+    report = Report()
+    report.source = f"AdGuard Home query log {client.base}"
+    report.start, report.end = start, end
+    report.note = (
+        "AdGuard Home's query log is a search, not Pi-hole's long-term database. "
+        "Counts below are the rows /control/querylog returned for the ACR suffixes, inside the window."
+    )
+    seen: set[tuple[int, str, str]] = set()
+    hits: dict[tuple[str, str, str], dict] = {}
+    client_counts: dict[str, dict] = {}
+    blocked_counts: dict[str, int] = {}
+    try:
+        for suffix, label in suffixes:
+            rows = client.querylog(suffix, limit=500)
+            if len(rows) >= 500:
+                report.truncated = True
+            for row in rows:
+                domain = _ag_domain(row)
+                if not domain or not domain_matches(domain, suffix):
+                    continue
+                stamp = _ag_time(row.get("time"))
+                if stamp is None or stamp < start or stamp > end:
+                    continue
+                ip, name = _ag_client(row)
+                key = (stamp, ip, domain)
+                if key in seen:
+                    continue
+                seen.add(key)
+                reason = str(row.get("reason") or "")
+                blocked = reason.startswith("Filtered")
+                report.total += 1
+                if blocked:
+                    report.blocked += 1
+                    blocked_counts[domain] = blocked_counts.get(domain, 0) + 1
+                slot = client_counts.get(ip)
+                if slot is None:
+                    slot = {"ip": ip, "name": name, "count": 0}
+                    client_counts[ip] = slot
+                    report.all_client_ips.append((ip, name))
+                elif name and not slot["name"]:
+                    slot["name"] = name
+                slot["count"] += 1
+                hit_key = (ip, domain, suffix)
+                item = hits.get(hit_key)
+                if item is None:
+                    item = {
+                        "ip": ip,
+                        "name": name,
+                        "domain": domain,
+                        "suffix": suffix,
+                        "label": label,
+                        "count": 0,
+                        "blocked": 0,
+                    }
+                    hits[hit_key] = item
+                item["count"] += 1
+                if blocked:
+                    item["blocked"] += 1
+                if name and not item["name"]:
+                    item["name"] = name
+    except adguard.AdGuardError as exc:
+        raise PiHoleError(str(exc)) from exc
+    ranked = sorted(client_counts.values(), key=lambda row: -row["count"])
+    report.clients = ranked[:top]
+    report.blocked_domains = [
+        {"domain": domain, "count": count}
+        for domain, count in sorted(blocked_counts.items(), key=lambda pair: -pair[1])[:top]
+    ]
+    report.acr = sorted(hits.values(), key=lambda item: (-item["count"], item["domain"]))
+    return report
+
+
 def cmd_plan(args: argparse.Namespace) -> int:
-    catalog = load_lists(Path(args.lists), args.vendor)
+    brands, catalog, allows, watches = _selection(args)
+    resolver = _resolver(args)
     connected = "not connected"
     existing: list[dict] = []
     if args.fixture:
         existing = _fixture_lists(Path(args.fixture))
         connected = f"fixture {args.fixture}"
+    elif resolver == "adguard":
+        if adguard._password():
+            client = _adguard_client()
+            try:
+                existing = [{"address": str(row.get("url") or "")} for row in client.filters()]
+            except adguard.AdGuardError as exc:
+                raise PiHoleError(str(exc)) from exc
+            connected = f"AdGuard Home {client.base}"
+        else:
+            print("No AdGuard Home password set, so this preview did not contact a server.")
+            print("Set ADGUARD_URL and ADGUARD_PASSWORD to compare against the filters already installed.")
     elif os.environ.get("PIHOLE_PASSWORD") or os.environ.get("PIHOLE_PASSWORD_FILE"):
         api = Api(os.environ.get("PIHOLE_URL", "http://pi.hole"))
         try:
@@ -1025,26 +1427,50 @@ def cmd_plan(args: argparse.Namespace) -> int:
         print("No Pi-hole password set, so this preview did not contact a server.")
         print("Set PIHOLE_URL and PIHOLE_PASSWORD to compare against the lists already installed.")
     plan = plan_lists(catalog, existing)
-    print_plan(plan, args.alphonso_regex, not args.no_gravity, connected)
+    print_plan(
+        plan,
+        args.alphonso_regex,
+        not args.no_gravity,
+        connected,
+        brands,
+        allows,
+        watches,
+        _refresh_word(resolver),
+    )
     return 0
 
 
 def cmd_apply(args: argparse.Namespace) -> int:
-    catalog = load_lists(Path(args.lists), args.vendor)
+    brands, catalog, allows, watches = _selection(args)
+    del brands, watches
+    resolver = _resolver(args)
+    regex_live = _regex_live(args.alphonso_regex, allows)
     log_path = Path(args.apply_log) if args.apply_log else None
     if args.fixture:
         existing = _fixture_lists(Path(args.fixture))
         plan = plan_lists(catalog, existing)
         record = {
             "added": [row["url"] for row in plan["add"]],
-            "regex": [ALPHONSO_REGEX] if args.alphonso_regex else [],
-            "gravity": (not args.no_gravity) and bool(plan["add"] or args.alphonso_regex),
+            "allow": [row["domain"] for row in allows],
+            "regex": [ALPHONSO_REGEX] if regex_live else [],
+            "gravity": (not args.no_gravity) and bool(plan["add"] or allows or regex_live),
         }
         if log_path:
             _write_private(log_path, json.dumps(record, indent=2) + "\n")
         for row in plan["add"]:
             print(f"Fixture apply: would have added {row['name']}")
-        print("Fixture mode does not contact a Pi-hole.")
+        for row in allows:
+            print(f"Fixture apply: would allow {row['domain']} ({row['scope']})")
+        print("Fixture mode does not contact a resolver.")
+        return 0
+    if resolver == "adguard":
+        client = _adguard_client()
+        try:
+            existing = [{"address": str(row.get("url") or "")} for row in client.filters()]
+        except adguard.AdGuardError as exc:
+            raise PiHoleError(str(exc)) from exc
+        plan = plan_lists(catalog, existing)
+        _apply_adguard(client, plan, args.alphonso_regex, not args.no_gravity, allows)
         return 0
     gravity_db = os.environ.get("PIHOLE_GRAVITY_DB")
     password = _password()
@@ -1058,24 +1484,23 @@ def cmd_apply(args: argparse.Namespace) -> int:
                     "On a v5 Pi-hole, set PIHOLE_GRAVITY_DB to /etc/pihole/gravity.db and re-run."
                 )
             plan = plan_lists(catalog, api.get_lists())
-            apply_lists_api(api, plan, args.alphonso_regex, not args.no_gravity)
+            apply_lists_api(api, plan, args.alphonso_regex, not args.no_gravity, allows)
         finally:
             api.close()
         return 0
     if gravity_db:
-        plan = plan_lists(catalog, [])
-        # Re-read existing addresses from the file itself.
         con = sqlite3.connect(gravity_db)
         try:
             existing = [{"address": row[0]} for row in con.execute("SELECT address FROM adlist")]
         finally:
             con.close()
         plan = plan_lists(catalog, existing)
-        apply_gravity_file(Path(gravity_db), plan, args.alphonso_regex, not args.no_gravity)
+        apply_gravity_file(Path(gravity_db), plan, args.alphonso_regex, not args.no_gravity, allows)
         return 0
     raise PiHoleError(
-        "Nothing to talk to. Set PIHOLE_URL and PIHOLE_PASSWORD for v6, "
-        "or PIHOLE_GRAVITY_DB for a v5 gravity database on this machine."
+        "Nothing to talk to. Set PIHOLE_URL and PIHOLE_PASSWORD for Pi-hole v6, "
+        "PIHOLE_GRAVITY_DB for a v5 gravity database on this machine, "
+        "or pass --resolver adguard with ADGUARD_URL and ADGUARD_PASSWORD."
     )
 
 
@@ -1091,14 +1516,16 @@ def _collect_report(args: argparse.Namespace) -> tuple[Report, int]:
             con.close()
         report.source = source
         return report, now
+    if _resolver(args) == "adguard":
+        client = _adguard_client()
+        now = int(time.time())
+        start = now - int(args.days) * 86400
+        return report_from_adguard(client, start, now, suffixes, args.top), now
     api = Api(os.environ.get("PIHOLE_URL", "http://pi.hole"))
     try:
         api.login(_password(), os.environ.get("PIHOLE_API_TOKEN"))
         now = int(time.time())
         start = now - int(args.days) * 86400
-        if api.kind == "v5":
-            report = api.report_via_api(start, now, suffixes, args.top)
-            return report, now
         report = api.report_via_api(start, now, suffixes, args.top)
         return report, now
     finally:
@@ -1174,8 +1601,25 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--fixture", help="Directory of JSON stand-ins. No network calls.")
     parser.add_argument("--ftl-db", help="Path to a pihole-FTL.db copy. Reads only.")
     parser.add_argument("--lists", default=str(DEFAULT_LISTS))
+    parser.add_argument("--keeps", default=str(DEFAULT_KEEPS))
     parser.add_argument("--suffixes", default=str(DEFAULT_SUFFIXES))
-    parser.add_argument("--vendor", action="store_true", help="Include the wider per-vendor lists.")
+    parser.add_argument(
+        "--brand",
+        action="append",
+        default=[],
+        help="Brand id, or a comma-separated list. Repeatable. Overrides --vendor.",
+    )
+    parser.add_argument(
+        "--vendor",
+        action="store_true",
+        help="Samsung, LG, Roku, and Fire TV HaGeZi lists. Ignored when --brand is set.",
+    )
+    parser.add_argument(
+        "--resolver",
+        choices=("pihole", "adguard"),
+        default="pihole",
+        help="Which resolver to talk to. The default stays Pi-hole.",
+    )
     parser.add_argument("--alphonso-regex", action="store_true")
     parser.add_argument("--no-gravity", action="store_true")
     parser.add_argument("--days", type=int, default=7)

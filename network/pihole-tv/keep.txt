@@ -1,0 +1,48 @@
+# Names that must keep resolving, and names that are only a warning.
+# Format: action|brand|domain|scope|note
+#   allow  written as an allow (Pi-hole) or an exception rule (AdGuard). Never added as a block.
+#   watch  printed only. Not allowlisted.
+#   exact  this hostname only. A tree allow would also reopen names under it.
+#   tree   this hostname and its subdomains.
+# Allow rows are applied on every run, not only with --brand. The default lists
+# already contain some of them.
+# Drawn from CleanYourTV's block/keep tables (https://cleanyour.tv/not-android)
+# and from comments in Perflyst's SmartTV.txt. Checked against the live lists
+# on 2026-10-27. Wording here is this repo's.
+
+allow|samsung|time.samsungcloudsolution.com|exact|Clock. CleanYourTV: Plex, YouTube, and Prime Video stop if this name does not resolve. The Block List Project smart-TV list still contains it. Perflyst comments it out for the same reason.
+allow|samsung|auth.samsungosp.com|exact|Samsung account sign-in. Perflyst comments it out because accounts fail to authenticate without it.
+allow|samsung|osb-ussvc.samsungqbe.com|exact|Samsung TV Plus. Perflyst comments it out as required for TV Plus.
+allow|samsung|otnprd8.samsungcloudsolution.net|exact|Firmware update host. Perflyst comments it out as required for software updates.
+allow|samsung|otnprd9.samsungcloudsolution.net|exact|Firmware update host. Same Perflyst comment as otnprd8.
+allow|samsung|otnprd10.samsungcloudsolution.net|exact|Firmware update host. Same Perflyst comment as otnprd8.
+allow|samsung|otnprd11.samsungcloudsolution.net|exact|Firmware update host. Same Perflyst comment as otnprd8.
+allow|samsung|samsungotn.net|tree|Firmware updates, including www.samsungotn.net. Perflyst comments both out and also still lists www.samsungotn.net as an active block. The Block List Project list still blocks the bare name.
+allow|samsung|lcprd1.samsungcloudsolution.net|exact|App downloads. CleanYourTV calls this optional: one report had to allow it again when downloads failed. The Block List Project list still blocks it, so it is allowlisted here. Perflyst comments it out.
+allow|samsung|samsungcloudsolution.com|exact|The bare name only. CleanYourTV says blocking this whole domain breaks the TV's connection. Subdomains are not reopened: acr0.samsungcloudsolution.com stays blocked. Pi-hole still treats a gravity hit on a parent as blocking other children, so if the set cannot get online, turn off the Block List Project and Perflyst lists.
+allow|lg|us.lgtvsdp.com|exact|Clock and services on the US host. CleanYourTV: the clock can reset to 2019 after a reboot, and Plex, HBO Max, and YouTube fail. The Block List Project list still contains it. Perflyst comments it out.
+allow|lg|ngfts.lge.com|exact|Content Store pictures. The Block List Project list still blocks it. Perflyst comments it out because thumbnails stop loading.
+allow|lg|snu.lge.com|exact|Software updates. CleanYourTV keep. Not in the combined lists checked on 2026-10-27; allowlisted so a wider list cannot take it.
+allow|lg|su.lge.com|exact|Software updates. Same source as snu.lge.com.
+allow|lg|nsu.lge.com|exact|Software updates. Same source as snu.lge.com.
+allow|lg|lgappstv.com|exact|Content Store apex only. ad.lgappstv.com stays blocked. A subdomain allow would reopen that ad host.
+allow|lg|lgtvsdp.com|exact|Content Store apex only. The clock host us.lgtvsdp.com is allowlisted on its own. Tracker names under this parent stay blocked.
+allow|vizio|api.vizio.com|exact|Smart features. Perflyst comments it out as required. CleanYourTV says keep it. HaGeZi has no Vizio list.
+allow|vizio|images.vizio.com|exact|Smart features. Same source as api.vizio.com.
+allow|hisense|api.us.hismarttv.com|exact|Possibly software updates. Perflyst blocks it and notes updates may need it. CleanYourTV says keep it.
+allow|hisense|api.euro.hismarttv.com|exact|European update host in the same Perflyst group. CleanYourTV says keep it.
+allow|hisense|api.eu.hismarttv.com|exact|European update host. Perflyst blocks it. CleanYourTV notes HaGeZi blocks it too and says to check updates if you block it.
+allow|hisense|ads-privacy.vidaahub.com|exact|The Ads Privacy app, where the set stores ad choices. CleanYourTV: that app does not open if this name is blocked. Not in the combined lists checked on 2026-10-27.
+allow|hisense|rsc-mntz.vidaahub.com|exact|Same Ads Privacy app. CleanYourTV says keep it. Not in the combined lists checked on 2026-10-27.
+
+watch|roku|logs.roku.com|tree|CleanYourTV says block this, and also that one person's live TV guide went blank until it was allowed again. Not allowlisted. Allow it from the query log if the guide goes blank.
+watch|hisense|auth-em.hismarttv.com|exact|Sign-in. CleanYourTV marks auth-*, api-gps-*, api-launcher-*, and msg-* optional: no breakage report was found. Perflyst blocks this host. Allow it from the query log if sign-in or the home screen fails.
+watch|hisense|auth-na.hismarttv.com|exact|Sign-in, North America. Same optional group. Perflyst blocks it.
+watch|hisense|auth-launcher-em.hismarttv.com|exact|Launcher sign-in. Same optional group. Perflyst blocks it.
+watch|hisense|auth-launcher-na.hismarttv.com|exact|Launcher sign-in, North America. Same optional group. Perflyst blocks it.
+watch|hisense|api-gps-em.hismarttv.com|exact|Location API. Same optional group. Perflyst blocks it.
+watch|hisense|api-gps-na.hismarttv.com|exact|Location API, North America. Same optional group. Perflyst blocks it.
+watch|hisense|api-launcher-em.hismarttv.com|exact|Launcher API. Same optional group. Perflyst blocks it.
+watch|hisense|api-launcher-na.hismarttv.com|exact|Launcher API, North America. Same optional group. Perflyst blocks it.
+watch|hisense|msg-em.hismarttv.com|exact|Messages. Same optional group. Perflyst blocks it.
+watch|hisense|msg-na.hismarttv.com|exact|Messages, North America. Same optional group. Perflyst blocks it.

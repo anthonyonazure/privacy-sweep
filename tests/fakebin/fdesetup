@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Stand-in for fdesetup. The recovery key line must not survive the audit filter.
+if [[ -n "${FDESETUP_LOG:-}" ]]; then
+  printf '%s\n' "$*" >> "$FDESETUP_LOG"
+fi
+case "${1:-}" in
+  status)
+    printf '%s\n' 'FileVault is On.' 'Personal recovery key = ABCD-EFGH-IJKL-MNOP'
+    ;;
+  *)
+    echo "refusing unexpected fdesetup args: $*" >&2
+    exit 97
+    ;;
+esac

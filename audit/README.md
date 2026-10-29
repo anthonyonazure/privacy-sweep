@@ -7,8 +7,12 @@ repo; they do not change what the script does.
 
 This does not wipe Windows Event Logs, the USBSTOR key, macOS Spotlight, or Linux login
 records. [SECURITY.md](../SECURITY.md) still applies. The clear scripts live in the per-OS
-folders and ask before they delete. The Windows audit may need an elevated terminal to read
-Prefetch and USBSTOR; if it cannot, it says so instead of pretending the count is zero.
+folders and ask before they delete. Prefetch often needs an elevated terminal; if it
+cannot be read, the audit says so. USBSTOR device subkeys are ACL'd to
+`NT AUTHORITY\SYSTEM`. An elevated terminal still cannot list them, and the audit
+will not take ownership or change that ACL. A non-interactive logon (SSH or a service)
+often does not load the interactive user's Explorer hive, so UserAssist, ShellBags,
+and Recent can differ from a desktop session.
 
 ```bash
 cd audit
@@ -22,9 +26,9 @@ chmod +x *.sh
 
 | OS | What is counted | Script |
 | --- | --- | --- |
-| Windows | Prefetch files, Jump Lists, USBSTOR key paths, recent-item files, Wi-Fi profile names (not passwords), plus execution stores: ShimCache/AppCompatCache, Amcache.hve, SRUM (`SRUDB.dat`), BAM/DAM, UserAssist, and ShellBags | [audit-windows.ps1](audit-windows.ps1) |
-| macOS | QuarantineEvents rows, recent-item files, Quick Look cache, shell-history line counts, unified logs under `/private/var/db/diagnostics`, knowledgeC.db, Biome, and FSEvents | [audit-macos.sh](audit-macos.sh) |
-| Linux | Thumbnail cache, recent-document entries (including `recently-used.xbel`), shell-history line counts, screenshot folders, systemd journal size, `wtmp` / `lastlog` / `btmp` size, and whether a user crontab exists | [audit-linux.sh](audit-linux.sh) |
+| Windows | Prefetch files, Jump Lists, USBSTOR key paths, recent-item files, Wi-Fi profile names (not passwords), plus execution stores: ShimCache/AppCompatCache, Amcache.hve, SRUM (`SRUDB.dat`), BAM/DAM, UserAssist, and ShellBags. Also shadow-copy counts, Recycle Bin `$I`/`$R` counts, pagefile/hiberfil/MEMORY.DMP size, search-index size, thumbcache database counts, wipe-tool remnant names, BitLocker protection status | [audit-windows.ps1](audit-windows.ps1) |
+| macOS | QuarantineEvents rows, recent-item files, Quick Look cache, shell-history line counts, unified logs under `/private/var/db/diagnostics`, knowledgeC.db, Biome, and FSEvents. Also local snapshots, Document Revisions size, external `.Trashes` counts, sleepimage/swap size, FileVault on/off | [audit-macos.sh](audit-macos.sh) |
+| Linux | Thumbnail cache, recent-document entries (including `recently-used.xbel`), shell-history line counts, screenshot folders, systemd journal size, `wtmp` / `lastlog` / `btmp` size, and whether a user crontab exists. Also swap, LUKS status (no keys), wipe-tool remnant names | [audit-linux.sh](audit-linux.sh) |
 
 `recently-used.xbel` was already part of the Linux recent-files section. It is still one count of
 bookmark entries, and the URIs inside it are still not printed.
@@ -43,6 +47,11 @@ commands. Screenshot folders are a path, a file count, and a size, not each file
 Several of the Windows and macOS paths need an elevated terminal or a system account. If this
 account cannot read them, the script says so. It does not turn "access denied" into a count of
 zero.
+
+Recovery structures (shadow copies, local snapshots, Document Revisions, swap, pagefile,
+encryption status, wipe-tool remnant names) are reported by the same scripts and are not
+deleted. Purging them is not part of this repo. Free-space fill is a separate opt-in module
+and is not run from here. See [docs/leave-no-trace.md](../docs/leave-no-trace.md).
 
 Thumbnail filenames are hashes, so the Linux report gives the directory, the file count, and the
 size rather than tens of thousands of paths. The output can still name programs and networks.

@@ -22,4 +22,5 @@ for s in clear-quicklook.sh clear-quarantine.sh clear-recent.sh clear-trash.sh c
 done
 
 echo "All macOS steps finished."
+echo "This run does not fill free space and does not delete snapshots or Document Revisions."
 echo "Reminder: the durable fix is FileVault (System Settings > Privacy & Security > FileVault)."

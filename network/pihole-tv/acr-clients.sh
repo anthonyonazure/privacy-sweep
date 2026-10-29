@@ -11,9 +11,13 @@
 #   --days N       window length (default 7)
 #   --fixture DIR  JSON stand-in, no network
 #   --ftl-db PATH  read a copy of pihole-FTL.db instead of the API
+#   --adguard      read AdGuard Home /control/querylog instead of Pi-hole
+#   --pihole       read Pi-hole (the default)
 #
 # Environment: PIHOLE_URL, PIHOLE_PASSWORD or PIHOLE_PASSWORD_FILE,
 # PIHOLE_FTL_DB, PIHOLE_API_TOKEN (v5; per-client ACR needs the database).
+# For --adguard: ADGUARD_URL, ADGUARD_PASSWORD or ADGUARD_PASSWORD_FILE,
+# ADGUARD_USER (default admin). The query log is a search, not a full database.
 set -euo pipefail
 
 LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)"
@@ -46,6 +50,8 @@ while [[ $# -gt 0 ]]; do
       [[ $# -gt 0 ]] || { echo "error: --output needs a path" >&2; exit 1; }
       OUTPUT="$1"
       ;;
+    --adguard) PY_ARGS+=(--resolver adguard) ;;
+    --pihole) PY_ARGS+=(--resolver pihole) ;;
     --help|-h) grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
