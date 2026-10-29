@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Stand-in for nmcli used by tests/test-privacy-sweep.sh. Not NetworkManager.
+if [[ "${1:-}" == "connection" && "${2:-}" == "delete" ]]; then
+  printf '%s\n' "$*" >> "${NMCLI_LOG:?}"
+  exit 0
+fi
+if [[ "$*" == *--active* ]]; then
+  printf '%s\n' 'HomeWifi:802-11-wireless:wlan0'
+  exit 0
+fi
+printf '%s\n' 'HomeWifi:802-11-wireless:wlan0'
+printf '%s\n' 'Cafe:802-11-wireless:'
+printf '%s\n' 'My\:Net:802-11-wireless:'
+printf '%s\n' 'Wired:802-3-ethernet:eth0'

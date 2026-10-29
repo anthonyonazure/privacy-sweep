@@ -1,0 +1,10 @@
+[Unit]
+Description=Run the Pi-hole privacy report once a week
+
+[Timer]
+OnCalendar=Mon *-*-* 07:00:00
+Persistent=true
+Unit=pihole-report.service
+
+[Install]
+WantedBy=timers.target

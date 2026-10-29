@@ -1,0 +1,17 @@
+# DNS suffixes used only to recognize ACR / smart-TV telemetry lookups.
+# Format: suffix label
+# A lookup counts when the name is the suffix or ends with ".<suffix>".
+# This is not a blocklist. Bare vendor domains (roku.com, samsung.com, lg.com)
+# are left out on purpose so ordinary streaming is not reported as ACR.
+
+samsungacr.com samsung-acr
+samsungads.com samsung-ads
+lgappstv.com lg-ads
+lgsmartad.com lg-ads
+lgtvsdp.com lg-telemetry
+alphonso.tv lg-alphonso
+tvinteractive.tv vizio-inscape
+samba.tv samba-acr
+smartclip.net smartclip
+logs.roku.com roku-logs
+ads.roku.com roku-ads

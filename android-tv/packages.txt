@@ -1,0 +1,76 @@
+# Packages android-tv/audit-tv.sh may flag. It never disables them.
+# Names and jobs are from CleanYourTV (https://github.com/Gathin23/cleanyourtv, MIT):
+# tools/privacy.py and the debloat lists under examples/, read 2026-10-27.
+# The reversible disable and the replacement launcher live in that project.
+# Format: category|package|note
+#   telemetry    usage, diagnostics, or ACR (what is on screen)
+#   ads          advertising id, promo, or ad-consent packages
+#   content-row  home-screen rows, channels, or recommendation feeds
+
+telemetry|com.google.android.feedback|Feedback reports sent to Google. On the Chromecast and Google TV Streamer lists.
+telemetry|com.android.tv.feedbackconsent|Consent screen that collects a bug report and system logs after the owner agrees. Shares the system UID on Google TV 14.
+telemetry|com.google.android.tv.remotecontrol.logging|Remote-usage logging on Chromecast and Google TV Streamer lists.
+telemetry|com.google.android.apps.tv.netoscope|Google TV network diagnostics. On the Chromecast with Google TV 4K list.
+telemetry|com.google.android.partnersetup|Partner-attribution pings. CleanYourTV's catalogue calls these RLZ pings.
+telemetry|com.google.android.tv.bugreportsender|Bug-report upload. On the Hisense and Xiaomi lists checked.
+telemetry|org.droidtv.candeebug|TP Vision analytics on Philips sets. CleanYourTV calls this DAC.
+telemetry|org.droidtv.gel|TP Vision metrics. Runs with candeebug.
+telemetry|org.droidtv.usagelogger|Boot, keypress, and panel telemetry on Philips sets.
+telemetry|org.droidtv.tv.frameworklogger|Framework and reboot logging on Philips sets.
+telemetry|com.tcl.logkit|TCL log capture and upload.
+telemetry|com.tcl.ttvs|TCL analytics. Some TCL lists say firmware updates stopped until this was enabled again.
+telemetry|com.miui.tv.analytics|Xiaomi analytics of logs and app usage.
+telemetry|tv.alphonso.alphonso_eula|Alphonso ad tracking on Xiaomi lists. Reads app-usage stats.
+telemetry|tv.inscape.tvclient.inscapeacr|Inscape ACR. Identifies what is on screen, including HDMI, from the picture.
+telemetry|com.skyworth.aisense|Coocaa and Skyworth ACR, used to target ads on the set.
+telemetry|tv.samba.ssm.ui|Samba TV ACR on TCL and Sony sets. Identifies what is on screen.
+telemetry|tv.samba.ssm|Samba TV ACR service, listed next to the UI package on a Sony BRAVIA list.
+telemetry|com.sonyericsson.idd.agent|Sony usage-data agent, on the BRAVIA VH21 list.
+telemetry|com.sony.dtv.usercontext|Sony user-context providers, on the BRAVIA VH21 list.
+telemetry|com.qterics.da.product|Qterics device agent, on the BRAVIA VH21 list.
+telemetry|com.sony.dtv.da.service|Sony remote-support session service, on the BRAVIA VH21 list.
+telemetry|com.hisense.evservice|Hisense Enhanced Viewing, the ACR and data-sharing client on the Hisense Android list.
+telemetry|com.amazon.tv.acr|Fire TV automatic content recognition, on the Fire TV Stick 4K (2023) list.
+telemetry|com.amazon.client.metrics.api|Fire OS metrics API, in that list's telemetry group.
+telemetry|com.amazon.neo.minerva|Fire OS telemetry, in that list's telemetry group.
+telemetry|com.amazon.neo.minerva.logcat|Fire OS logcat telemetry, grouped with Minerva.
+telemetry|com.amazon.wirelessmetrics.service|Fire OS wireless metrics, in that list's telemetry group.
+telemetry|com.amazon.perfcollection|Fire OS performance collection, in that list's telemetry group.
+telemetry|com.amazon.perfc|Fire OS performance collection, in that list's telemetry group.
+telemetry|com.amazon.dp.logger|Fire OS logger, in that list's telemetry group.
+telemetry|com.amazon.ceviche|Fire OS data-collection pipelines, in that list's telemetry group.
+telemetry|com.amazon.tv.developer.dataservice|Content-personalization data for third-party apps, in that list's telemetry group.
+telemetry|com.amazon.device.telemetry.emitter|Fire OS 8 telemetry emitter, in that list's telemetry group.
+telemetry|com.amazon.livedeviceservice|Fire OS device service, in that list's telemetry group.
+telemetry|com.amazon.privacypassservice|Fire OS privacy-pass token service, in that list's telemetry group.
+telemetry|com.amazon.wifilocker|Fire OS service the 2023 Stick list describes as uploading Wi-Fi passwords.
+telemetry|com.amazon.ftvspatial|Fire TV presence and indoor-location sensing, in that list's telemetry group.
+telemetry|com.amazon.device.metrics|Fire OS metrics. The 2023 Stick list says Fire OS protects this package from disable.
+telemetry|com.amazon.device.logmanager|Fire OS log manager. The same list says Fire OS protects it from disable.
+telemetry|com.amazon.device.crashmanager|Fire OS crash reports. The same list says Fire OS protects it from disable.
+telemetry|com.fireos.usagestats.proxy|Fire OS usage stats. The same list says Fire OS protects it from disable.
+
+ads|com.google.android.adservices.api|Privacy Sandbox ad services. On the Chromecast and Google TV Streamer lists.
+ads|com.google.android.ext.adservices.api|Privacy Sandbox ad-services extension, grouped with the package above.
+ads|com.google.android.federatedcompute|On-device federated-learning module, grouped with the ad services on those lists.
+ads|com.google.android.ondevicepersonalization.services|On-device personalization, grouped with the ad services on those lists.
+ads|com.amazon.hybridadidservice|Fire TV advertising-ID service, in the 2023 Stick list's ads group.
+ads|com.amazon.kso.blackbird|Fire TV launcher ad bidding, in that ads group.
+ads|com.amazon.sneakpeek|Sponsored previews, in that ads group.
+ads|com.amazon.ftvads.deeplinking|Fire TV ad deep links. The 2023 Stick list says Fire OS protects it from disable.
+ads|com.sony.dtv.promos|Sony promo delivery, on the BRAVIA VH21 list.
+ads|org.droidtv.consentcmpapp|TP Vision ad-consent screen, on the Philips TA7 list.
+
+content-row|com.google.android.tvrecommendations|Google TV recommendation rows. On the Hisense and Xiaomi lists.
+content-row|com.tcl.tv.tclhome_passive|Pushes TCL content onto the home screen at boot.
+content-row|com.tcl.partnercustomizer|TCL changes to the Google TV home rows.
+content-row|com.tcl.tv.plus|TCL TV+ content app, in the TCL content group.
+content-row|com.tcl.channelplus|TCL live FAST channels, in the TCL content group.
+content-row|com.tcl.waterfall.overseas|TCL Channel feed. Optional on the TCL G10 list for sets that ship it.
+content-row|com.sony.dtv.sonyselect|Sony Select recommendation app, on the BRAVIA VH21 list.
+content-row|com.sony.dtv.sonytab|Sony content tab and partner rows, on the BRAVIA VH21 list.
+content-row|com.amazon.media.recommendations|Fire TV recommendation rows, in the 2023 Stick list's ads and rows group.
+content-row|com.amazon.providers.contentsupport|Fire TV content-support provider, in that same group.
+content-row|com.mitv.tvhome.atv|Xiaomi PatchWall home, the content rows on Mi Box lists.
+content-row|com.mitv.tvhome.michannel|Mi Channel rows, on the Mi Box S list.
+content-row|com.xm.webcontent|Xiaomi web promos, on the Mi Box S list.

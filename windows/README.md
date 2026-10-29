@@ -45,15 +45,32 @@ Run everything with no prompts:
 ## What these scripts deliberately do NOT touch
 
 - **The Registry stores** (USB history, typed paths, most-recently-used keys), **SRUM**,
-  **Amcache**, **ShimCache**, and the **Event Logs**. These are woven into how Windows works;
-  editing them by hand risks breaking the system, and wiping Event Logs is a maintenance and
-  security concern rather than privacy hygiene. Reducing what gets written is a Group Policy job,
-  not a delete script.
-- **Search index (Windows.edb), pagefile, hiberfil.** Managed by Windows. Turn hibernation off with
-  `powercfg /h off` if you want the hiberfil gone; that is a deliberate setting, not a sweep.
+  **Amcache**, **ShimCache**, **BAM/DAM**, **UserAssist**, **ShellBags**, and the **Event Logs**.
+  These are woven into how Windows works; editing them by hand risks breaking the system, and
+  wiping Event Logs is a maintenance and security concern rather than privacy hygiene. ShimCache,
+  Amcache, SRUM, and BAM/DAM can still show a program run after the program file is gone. The
+  audit script reports that those stores are present and does not delete them. Reducing what gets
+  written is a Group Policy job, not a delete script.
+- **Search index (Windows.edb / Windows.db), pagefile, hiberfil, crash dumps, and Volume Shadow
+  Copies.** `clear-all` does not delete these. The audit reports presence, size, or
+  shadow-copy counts and does not read their contents. Removing shadow copies deletes
+  Previous Versions and restore points. That step is
+  [../recovery-purge/purge-vss.ps1](../recovery-purge/purge-vss.ps1): `-PurgeVss` and
+  `-Apply`, plus the phrase `DELETE SHADOW COPIES`. It is not part of `clear-all`.
+  Hibernation and pagefile clearing are
+  [../memory-residue/memory-windows.ps1](../memory-residue/memory-windows.ps1), also opt-in.
 
-## Wi-Fi passwords (view, not clear)
+## Other scripts (not part of `clear-all`)
 
-To see saved network passwords: `netsh wlan show profiles`, then
-`netsh wlan show profile name="NETWORK" key=clear` and read the Key Content line. To forget a
-network: Settings > Network & internet > Wi-Fi > Manage known networks.
+| Script | What it does |
+| --- | --- |
+| [forget-wifi.ps1](forget-wifi.ps1) | Lists saved Wi-Fi profiles and deletes them with `netsh`. Keeps the one you are joined to unless you pass `-IncludeCurrent`. Does not print the password. |
+| [../audit/audit-windows.ps1](../audit/audit-windows.ps1) | Report only: Prefetch, Jump Lists, USBSTOR, recent items, Wi-Fi profile names, execution-store presence (ShimCache, Amcache, SRUM, BAM/DAM, UserAssist, ShellBags), shadow copies, Recycle Bin metadata counts, pagefile/hiberfil/MEMORY.DMP, search index, BitLocker status. |
+| [../hdd-free-space/wipe-windows.ps1](../hdd-free-space/wipe-windows.ps1) | Opt-in `cipher /w` for a hard disk. Not part of `clear-all`. Refuses SSDs unless you override. |
+| [../browsers/clear-browsers.ps1](../browsers/clear-browsers.ps1) | History, cookies, and cache for Chrome, Edge, Firefox, and Brave. Refuses a browser that is still open. |
+
+## Wi-Fi profile names
+
+`forget-wifi.ps1` and the audit script list profile names. They do not run `key=clear`, so the
+password is not printed. To forget a network by hand: Settings > Network & internet > Wi-Fi >
+Manage known networks.

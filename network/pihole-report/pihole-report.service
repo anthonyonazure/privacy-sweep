@@ -1,0 +1,16 @@
+[Unit]
+Description=Weekly Pi-hole privacy report (privacy-sweep)
+Documentation=https://github.com/pi-hole/FTL
+
+[Service]
+Type=oneshot
+# Edit both paths. The environment file should be mode 0600 and should set
+# PIHOLE_URL plus PIHOLE_PASSWORD_FILE. It should not live in the git repo.
+EnvironmentFile=/etc/privacy-sweep/pihole.env
+ExecStart=/usr/bin/env bash /opt/privacy-sweep/network/pihole-report/weekly-report.sh --yes --output /var/lib/privacy-sweep/latest.md
+# Run as the person who administers this Pi-hole. The report lists client names.
+# User=pi
+# Group=pi
+
+[Install]
+WantedBy=default.target

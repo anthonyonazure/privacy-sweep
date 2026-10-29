@@ -1,0 +1,21 @@
+
+Profiles on interface Wi-Fi:
+
+Group policy profiles (read only)
+---------------------------------
+    <None>
+
+User profiles
+-------------
+    All User Profile     : HomeWifi
+    All User Profile     : Cafe
+    User Profile : Office
+    All User Profile     : My:Net
+
+    Profil für alle Benutzer : Arbeit
+    Perfil de todos los usuarios : Casa
+
+    Profiles on interface Ethernet:
+
+    User Profile :
+    Something without a colon

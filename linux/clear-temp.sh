@@ -16,12 +16,13 @@ esac; done
 confirm() { $ASSUME_YES && return 0; read -r -p "Proceed? [y/N] " a; [[ "$a" =~ ^[Yy]$ ]]; }
 
 echo "== Your temp files in /tmp and /var/tmp =="
-COUNT=$(find /tmp /var/tmp -user "$(id -un)" -mindepth 1 2>/dev/null | wc -l | tr -d ' ')
+# find returns non-zero on an unreadable entry. Do not abort --dry-run.
+COUNT=$(find /tmp /var/tmp -user "$(id -un)" -mindepth 1 2>/dev/null | wc -l | tr -d ' ' || true)
 echo "Files owned by you: ${COUNT:-0}"
 
 if $DRY_RUN; then
   echo "(dry run) Would remove these (first 20 shown):"
-  find /tmp /var/tmp -user "$(id -un)" -mindepth 1 -maxdepth 1 2>/dev/null | head -20 | sed 's/^/  /'
+  find /tmp /var/tmp -user "$(id -un)" -mindepth 1 -maxdepth 1 2>/dev/null | head -20 | sed 's/^/  /' || true
   exit 0
 fi
 confirm || { echo "Cancelled."; exit 0; }

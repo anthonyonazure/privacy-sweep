@@ -1,0 +1,12 @@
+vssadmin 1.1 - Volume Shadow Copy Service administrative command-line tool
+
+Contents of shadow copy set ID: {aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee}
+   Contained 1 shadow copies at creation time: 10/1/2026 12:00:00 PM
+      Shadow Copy ID: {11111111-1111-1111-1111-111111111111}
+         Original Volume: (C:)\\?\Volume{abc}\
+         Shadow Copy Volume: \\?\GLOBALROOT\Device\HarddiskVolumeShadowCopy1
+         Originating Machine: TESTHOST
+         Recovery key: SHOULD-NOT-PRINT
+      Shadow Copy ID: {22222222-2222-2222-2222-222222222222}
+         Original Volume: (D:)\\?\Volume{def}\
+         Shadow Copy Volume: \\?\GLOBALROOT\Device\HarddiskVolumeShadowCopy2

@@ -1,0 +1,8 @@
+/dev/mapper/cryptroot is active and is in use.
+  type:    LUKS2
+  cipher:  aes-xts-plain64
+  keysize: 512 bits
+  key location: keyring
+  device:  /dev/sda2
+  passphrase: SUPERSECRETKEY
+  size:    1000 sectors

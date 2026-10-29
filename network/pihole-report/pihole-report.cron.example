@@ -1,0 +1,4 @@
+# Example crontab line. Edit the paths, then install with: crontab -e
+# Mondays at 07:15. --yes is required; without it the script only prints a preview.
+# Keep the password file mode 0600. Do not put the password in this line.
+15 7 * * 1 PIHOLE_URL=http://127.0.0.1 PIHOLE_PASSWORD_FILE=$HOME/.config/privacy-sweep/pihole.password /path/to/privacy-sweep/network/pihole-report/weekly-report.sh --yes --output $HOME/pihole-privacy.md

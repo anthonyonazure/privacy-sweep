@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Stand-in that must not be invoked by the fixture audit. Logs and fails.
+if [[ -n "${VSSADMIN_LOG:-}" ]]; then
+  printf '%s\n' "$*" >> "$VSSADMIN_LOG"
+fi
+echo "refusing: vssadmin $*" >&2
+exit 99

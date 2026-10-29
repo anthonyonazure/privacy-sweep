@@ -1,0 +1,2 @@
+# keyfile /tmp/comment-should-not-print-keyfile
+cryptroot UUID=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee /home/me/should-not-print-keyfile luks,discard
