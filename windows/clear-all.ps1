@@ -25,4 +25,5 @@ foreach ($s in $order) {
 }
 
 Write-Host "All Windows steps finished."
+Write-Host "This run does not fill free space and does not delete Volume Shadow Copies."
 Write-Host "Reminder: the durable fix is BitLocker (Settings > Privacy & security > Device encryption)."

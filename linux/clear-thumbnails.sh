@@ -19,7 +19,7 @@ DIR="${XDG_CACHE_HOME:-$HOME/.cache}/thumbnails"
 
 echo "== Thumbnail cache =="
 if [[ ! -d "$DIR" ]]; then echo "No thumbnail cache found. Nothing to do."; exit 0; fi
-SIZE=$(du -sh "$DIR" 2>/dev/null | cut -f1)
+SIZE=$(du -sh "$DIR" 2>/dev/null | cut -f1 || true)
 echo "Target: $DIR   Size: ${SIZE:-0}"
 
 if $DRY_RUN; then echo "(dry run) Would delete the contents of $DIR."; exit 0; fi

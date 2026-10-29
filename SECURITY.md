@@ -28,11 +28,16 @@ your own device**. It is a privacy-hygiene tool, the same category as the built-
   deliberately leave system internals alone (Windows Registry and Event Logs, macOS Spotlight and
   system databases, Linux login records) because editing those risks breaking the machine and
   crosses out of privacy hygiene. The audit reports whether Windows execution stores, macOS
-  unified logs, knowledgeC, Biome, FSEvents, and Linux login-record files are present. It does
-  not edit them.
-- **These scripts do not securely overwrite data.** They clear the stores; they do not scrub free
-  space or guarantee unrecoverability. For that, and for the only protection that covers every store
-  at once, use full-disk encryption: FileVault, BitLocker, LUKS, or a phone's built-in encryption.
+  unified logs, knowledgeC, Biome, FSEvents, Linux login-record files, and recovery structures
+  (snapshots, shadow copies, swap, encryption status) are present. It does not edit them.
+- **The default scripts do not securely overwrite data.** `clear-all` and `privacy-sweep.sh` clear
+  named stores. They do not scrub free space, and they do not guarantee unrecoverability. The
+  opt-in `hdd-free-space/` module can fill free space on a hard disk. It is not part of
+  `clear-all`. It refuses SSDs unless you pass a flag that acknowledges the fill will not
+  reliably erase an SSD. It does not remove shadow copies or snapshots.
+- For the protection that covers every store at once, use full-disk encryption: FileVault,
+  BitLocker, LUKS, or a phone's built-in encryption. When you retire a drive, destroying that
+  key (or the drive vendor's erase) is the honest step. This repo will not destroy a key for you.
 
 ## Network, browsers, and the audit report
 
@@ -59,6 +64,35 @@ these reports wipe Windows Event Logs, the USBSTOR registry key, those execution
 macOS Spotlight, Linux login records, or anything else this file already puts out of scope.
 An audit printout is itself sensitive (program names, network names, installed packages).
 Keep it to yourself.
+
+The same audits also **report** recovery structures: Volume Shadow Copy counts, APFS local
+snapshot names, Document Revisions size, Recycle Bin `$I`/`$R` counts (not the original
+paths inside those files), pagefile/hiberfil/MEMORY.DMP and sleepimage/swap presence and
+size, Windows Search index size, thumbcache database counts, wipe-tool remnant **names**,
+and FileVault/BitLocker/LUKS **status**. They do not delete any of those, and they do not
+print Wi-Fi passwords, encryption keys, or file contents. **Purging shadow copies, local
+snapshots, or Document Revisions is opt-in, in [recovery-purge/](recovery-purge/).**
+Each store has its own flag. A dry run is the default. A typed phrase is required
+before a delete. `--yes` does not delete. That step destroys backups and Previous
+Versions, and it is not part of `clear-all`.
+
+`hdd-free-space/` is opt-in and off by default. The default launcher and the
+`clear-all` scripts do not call it. `./privacy-sweep.sh --dry-run --all-modules` and
+`.\privacy-sweep.ps1 -DryRun -AllModules` dry-run it and do not pass an apply flag.
+A free-space fill does not clear shadow copies or snapshots. On an SSD the Windows
+tool still refuses (exit 2) unless you override it yourself. See
+[docs/leave-no-trace.md](docs/leave-no-trace.md),
+[docs/reduce-future-logging.md](docs/reduce-future-logging.md), and
+[docs/anti-forensics.md](docs/anti-forensics.md).
+
+Event Log clearing is not the default. The only script path is
+`local-artifacts/clear-local.ps1 -ClearEventLogs`, which prints a warning that it
+breaks incident response, requires the phrase `CLEAR EVENT LOGS`, and is excluded
+from `-AllOptIn` and from `clear-all`. USBSTOR is not deleted. Its device subkeys
+are ACL'd to `NT AUTHORITY\SYSTEM`; an elevated terminal still cannot list them, and
+this repo will not take ownership of that key. Keychain and password-vault
+extraction stay out of scope. Login records (`utmp`, `wtmp`, `btmp`, `lastlog`) stay
+audit-only.
 
 Forgetting a saved Wi-Fi network, and clearing browser cookies, are opt-in. They are not part
 of `clear-all`. The Wi-Fi scripts leave the network you are joined to alone unless you pass

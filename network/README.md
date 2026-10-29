@@ -11,6 +11,9 @@ because a list change affects every device that uses that resolver.
 | [router-hygiene/](router-hygiene/) | Router checklist, plus the few checks a computer on the LAN can make |
 | [device-inventory/](device-inventory/) | Who is on this LAN, with TVs and unnamed addresses called out |
 
+A wipe of a PC does not clear this resolver's query log or the router's admin log. That
+limit is spelled out in [docs/leave-no-trace.md](../docs/leave-no-trace.md).
+
 Read [SECURITY.md](../SECURITY.md) before you point any of this at a resolver. The password belongs
 in `PIHOLE_PASSWORD` or a mode-0600 file named by `PIHOLE_PASSWORD_FILE`, not on the command line
 and not in this git repo. AdGuard Home uses `ADGUARD_PASSWORD` or `ADGUARD_PASSWORD_FILE` the

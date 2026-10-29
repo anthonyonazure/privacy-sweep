@@ -5,8 +5,14 @@ two package lists: everything installed, and everything enabled. It then flags n
 [packages.txt](packages.txt) that CleanYourTV treats as manufacturer telemetry, ads, or
 home-screen content rows.
 
-Nothing is disabled, hidden, or uninstalled. The script is not part of `clear-all` or
-`privacy-sweep.sh`.
+Nothing is disabled, hidden, or uninstalled. The script is not part of `clear-all`.
+`./privacy-sweep.sh --dry-run --all-modules` includes it and still changes nothing.
+
+The same report notes whether Digital Wellbeing (`com.google.android.apps.wellbeing`),
+Samsung usage stats (`com.samsung.android.forest`), and Google usage stats
+(`com.google.android.apps.turbo`) are installed. It does not print usage events and
+does not run `pm disable`. Phone usage stats are
+[android/audit-usage.sh](../android/audit-usage.sh).
 
 The package names and the jobs they do are drawn from
 [CleanYourTV](https://github.com/Gathin23/cleanyourtv) (`tools/privacy.py` and the debloat

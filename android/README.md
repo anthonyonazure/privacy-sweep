@@ -48,6 +48,10 @@ telemetry, ad, and content-row names. It does not disable anything, and it is no
 
 ## Permission report (optional, removes nothing)
 
+[audit-usage.sh](audit-usage.sh) reports whether Digital Wellbeing and the Samsung and
+Google usage-stats packages are installed, and how many lines `dumpsys usagestats`
+returned. It does not print usage events and it does not disable anything.
+
 [audit-permissions.sh](audit-permissions.sh) asks the phone, over `adb`, which apps hold the
 permissions that can read or interrupt a lot of what you do: accessibility services, device
 admin, SMS, call log, notification listeners, and drawing over other apps. Third-party apps

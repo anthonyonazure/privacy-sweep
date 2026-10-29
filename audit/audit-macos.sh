@@ -4,6 +4,8 @@
 # at first: the download quarantine log, recent items, the Quick Look cache,
 # shell history, unified logs, knowledgeC, Biome, and FSEvents.
 # It does not delete anything and it does not print the contents of those stores.
+# It also reports local snapshots, Document Revisions size, external Trash
+# counts, sleepimage/swap presence, and FileVault on/off.
 #
 #   ./audit-macos.sh
 #   ./audit-macos.sh --dry-run     # same report; there is nothing to apply
@@ -13,6 +15,8 @@
 # and FSEvents are reported as presence and size only.
 set -euo pipefail
 
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 for arg in "$@"; do
   case "$arg" in
     --dry-run|--yes|-y) ;;
@@ -21,8 +25,9 @@ for arg in "$@"; do
   esac
 done
 
-if [[ "$(uname -s)" != "Darwin" ]]; then
-  echo "This report is for macOS. Detected: $(uname -s)." >&2
+OS_NAME="${PRIVACY_SWEEP_OS:-$(uname -s)}"
+if [[ "$OS_NAME" != "Darwin" ]]; then
+  echo "This report is for macOS. Detected: $OS_NAME." >&2
   exit 1
 fi
 
@@ -50,8 +55,8 @@ echo "-- Recent items --"
 SFL="$HOME/Library/Application Support/com.apple.sharedfilelist"
 echo "Path: $SFL"
 if [[ -d "$SFL" ]]; then
-  echo "Files: $(find "$SFL" -type f 2>/dev/null | wc -l | tr -d ' ')"
-  find "$SFL" -type f 2>/dev/null | sed 's/^/  /'
+  echo "Files: $(find "$SFL" -type f 2>/dev/null | wc -l | tr -d ' ' || true)"
+  find "$SFL" -type f 2>/dev/null | sed 's/^/  /' || true
 else
   echo "Files: 0 (not present)"
 fi
@@ -61,8 +66,8 @@ echo "-- Quick Look thumbnail cache --"
 QL="$HOME/Library/Caches/com.apple.QuickLook.thumbnailcache"
 echo "Path: $QL"
 if [[ -d "$QL" ]]; then
-  echo "Files: $(find "$QL" -type f 2>/dev/null | wc -l | tr -d ' ')"
-  echo "Size: $(du -sh "$QL" 2>/dev/null | cut -f1)"
+  echo "Files: $(find "$QL" -type f 2>/dev/null | wc -l | tr -d ' ' || true)"
+  echo "Size: $(du -sh "$QL" 2>/dev/null | cut -f1 || true)"
 else
   echo "Files: 0 (this user cache is not present)"
 fi
@@ -72,7 +77,12 @@ echo
 
 echo "-- Shell history (line counts only) --"
 shopt -s nullglob
-HIST_FILES=("$HOME/.zsh_history" "$HOME/.bash_history" "$HOME/.zhistory")
+HIST_FILES=(
+  "$HOME/.zsh_history" "$HOME/.bash_history" "$HOME/.zhistory"
+  "$HOME/.local/share/fish/fish_history" "$HOME/.config/fish/fish_history"
+  "$HOME/.sh_history" "$HOME/.ksh_history" "$HOME/.history" "$HOME/.csh_history"
+  "$HOME/.config/nushell/history.txt" "$HOME/.local/share/ion/history"
+)
 HIST_FILES+=("$HOME"/.zsh_sessions/*.history "$HOME"/.zsh_sessions/*.historynew)
 shopt -u nullglob
 if [[ ${#HIST_FILES[@]} -eq 0 ]]; then
@@ -138,5 +148,15 @@ echo "Changed paths inside the logs are not printed."
 report_any "/.fseventsd"
 report_any "/System/Volumes/Data/.fseventsd"
 echo
+
+bash "$DIR/audit-recovery-macos.sh" "$@"
+
+echo "Local snapshots, Document Revisions, external Trash, sleepimage/swap,"
+echo "and FileVault on/off are reported above. They are not deleted."
+echo "Unified logs, knowledgeC, Biome, and FSEvents are reported as presence"
+echo "and size only. Rows, log messages, and changed paths are not printed."
 echo "Not read, and not cleared by this tool: Spotlight and the keychain."
-echo "See SECURITY.md."
+echo "Audit only: counts, sizes, and paths. Contents, passwords, message bodies, and row values are not printed."
+echo "Nothing was deleted."
+echo "Opt-in snapshot purge is a separate tool and is not part of clear-all."
+echo "See SECURITY.md and docs/leave-no-trace.md."

@@ -24,4 +24,5 @@ done
 
 echo "All user-space Linux steps finished."
 echo "System logs are separate and admin-only: sudo ./clear-logs.sh"
+echo "This run does not fill free space and does not delete snapshots or shadow copies."
 echo "Reminder: the durable fix is full-disk encryption (LUKS)."

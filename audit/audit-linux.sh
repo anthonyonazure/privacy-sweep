@@ -11,8 +11,11 @@
 #   ./audit-linux.sh --dry-run     # same report; there is nothing to apply
 #   ./audit-linux.sh --yes         # same report
 #
+# Also reports swap, LUKS status (no keys), and wipe-tool remnant names.
 # recently-used.xbel is already counted with recent documents.
 set -euo pipefail
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 for arg in "$@"; do
   case "$arg" in
@@ -53,8 +56,8 @@ echo "-- Thumbnail cache --"
 THUMBS="${XDG_CACHE_HOME:-$HOME/.cache}/thumbnails"
 echo "Path: $THUMBS"
 if [[ -d "$THUMBS" ]]; then
-  COUNT="$(find "$THUMBS" -type f 2>/dev/null | wc -l | tr -d ' ')"
-  SIZE="$(du -sh "$THUMBS" 2>/dev/null | cut -f1)"
+  COUNT="$(find "$THUMBS" -type f 2>/dev/null | wc -l | tr -d ' ' || true)"
+  SIZE="$(du -sh "$THUMBS" 2>/dev/null | cut -f1 || true)"
   echo "Files: $COUNT"
   echo "Size: ${SIZE:-unknown}"
   echo "Subdirectories:"
@@ -80,14 +83,18 @@ done
 RECENT_DIR="$DATA/RecentDocuments"
 echo "Path: $RECENT_DIR"
 if [[ -d "$RECENT_DIR" ]]; then
-  echo "Files: $(find "$RECENT_DIR" -type f 2>/dev/null | wc -l | tr -d ' ')"
+  echo "Files: $(find "$RECENT_DIR" -type f 2>/dev/null | wc -l | tr -d ' ' || true)"
 else
   echo "Files: 0 (not present)"
 fi
 echo
 
 echo "-- Shell and tool history (line counts only) --"
-for target in "$HOME/.bash_history" "$HOME/.zsh_history" "$HOME/.viminfo" "$HOME/.lesshst" "$HOME/.python_history"; do
+for target in \
+  "$HOME/.bash_history" "$HOME/.zsh_history" "$HOME/.viminfo" "$HOME/.lesshst" "$HOME/.python_history" \
+  "$HOME/.local/share/fish/fish_history" "$HOME/.config/fish/fish_history" \
+  "$HOME/.sh_history" "$HOME/.ksh_history" "$HOME/.history" "$HOME/.csh_history" \
+  "$HOME/.config/nushell/history.txt" "$HOME/.local/share/ion/history"; do
   report_file "$(basename "$target")" "$target"
 done
 
@@ -219,5 +226,14 @@ else
   echo "crontab: not installed"
 fi
 echo
-echo "See SECURITY.md. This report does not edit login records or the journal."
-echo "The clear-* scripts are separate and ask before deleting."
+
+bash "$DIR/audit-recovery-linux.sh" "$@"
+
+echo "Screenshot folders, journal size, login-record sizes, and crontab presence"
+echo "are reported above. Swap, LUKS status, and wipe-tool remnant names are too."
+echo "File contents, journal messages, who logged in, and crontab commands are not printed."
+echo "Nothing in this audit is deleted. This report does not edit login records or the journal."
+echo "Audit only: counts, sizes, and paths. Contents, passwords, message bodies, and row values are not printed."
+echo "Nothing was deleted."
+echo "Opt-in snapshot purge, browser-deep, and memory actions are separate tools and are not part of clear-all."
+echo "See SECURITY.md and docs/leave-no-trace.md."

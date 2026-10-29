@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Stand-in that must not be invoked by the fixture audit. Logs and fails.
+if [[ -n "${MANAGEBDE_LOG:-}" ]]; then
+  printf '%s\n' "$*" >> "$MANAGEBDE_LOG"
+fi
+echo "refusing: manage-bde $*" >&2
+exit 99

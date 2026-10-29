@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Stand-in for tmutil. Records arguments. Refuses anything except the list commands.
+if [[ -n "${TMUTIL_LOG:-}" ]]; then
+  printf '%s\n' "$*" >> "$TMUTIL_LOG"
+fi
+case "${1:-}" in
+  listlocalsnapshots)
+    printf '%s\n' 'Snapshots for disk /:' 'com.apple.TimeMachine.2026-10-01-120000.local'
+    ;;
+  listlocalsnapshotdates)
+    printf '%s\n' 'Snapshot dates for disk /:' '2026-10-01-120000'
+    ;;
+  *)
+    echo "refusing unexpected tmutil args: $*" >&2
+    exit 97
+    ;;
+esac
