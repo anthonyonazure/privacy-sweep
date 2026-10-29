@@ -61,9 +61,16 @@ echo "### Messages, Bluetooth, AirDrop, Screen Time"
 echo "Message text, contact names, device names, and usage rows are not printed."
 echo
 MSG="$HOME/Library/Messages"
-report_file_presence "Messages database (chat.db)" "$MSG/chat.db"
-report_file_presence "Messages database journal (chat.db-wal)" "$MSG/chat.db-wal"
-report_dir_summary "Messages attachments" "$MSG/Attachments"
+if [[ "$(user_dir_status "$MSG")" == "protected" ]]; then
+  echo "-- Messages database --"
+  echo "Path: $MSG"
+  echo "Present: protected (grant Full Disk Access to this terminal to size it)"
+  echo
+else
+  report_file_presence "Messages database (chat.db)" "$MSG/chat.db"
+  report_file_presence "Messages database journal (chat.db-wal)" "$MSG/chat.db-wal"
+  report_dir_summary "Messages attachments" "$MSG/Attachments"
+fi
 report_file_presence "Bluetooth pairings (system)" "/Library/Preferences/com.apple.Bluetooth.plist"
 report_file_presence "Bluetooth settings (user)" "$HOME/Library/Preferences/com.apple.Bluetooth.plist"
 report_file_presence "AirDrop and Sharing settings (sharingd)" "$HOME/Library/Preferences/com.apple.sharingd.plist"
@@ -73,10 +80,21 @@ echo "both are covered by the main audit. Screen Time usage rows live in knowled
 echo
 
 echo "### Siri, dictation, and Apple Intelligence"
-report_dir_summary "Siri assistant data" "$HOME/Library/Assistant"
-report_dir_summary "Siri suggestions" "$HOME/Library/Suggestions"
-report_dir_summary "Intelligence platform data" "$HOME/Library/IntelligencePlatform"
-report_dir_summary "CoreSpotlight metadata" "$HOME/Library/Metadata/CoreSpotlight"
+report_protected_dir() {
+  local label="$1" path="$2"
+  if [[ "$(user_dir_status "$path")" == "protected" ]]; then
+    echo "-- $label --"
+    echo "Path: $path"
+    echo "Present: protected (grant Full Disk Access to this terminal to size it)"
+    echo
+  else
+    report_dir_summary "$label" "$path"
+  fi
+}
+report_protected_dir "Siri assistant data" "$HOME/Library/Assistant"
+report_protected_dir "Siri suggestions" "$HOME/Library/Suggestions"
+report_protected_dir "Intelligence platform data" "$HOME/Library/IntelligencePlatform"
+report_protected_dir "CoreSpotlight metadata" "$HOME/Library/Metadata/CoreSpotlight"
 echo
 
 echo "### Shell and tool history beyond .zsh_history"

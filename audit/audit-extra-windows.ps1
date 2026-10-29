@@ -12,8 +12,8 @@
   device serials, command history, Recall content, or credentials.
   -DryRun and -Yes exist so the flag style matches the other scripts; both
   print the same report.
-  Recall paths and the Recall policy name come from public Microsoft
-  documentation, not from the Praxis library. Verify them on your build.
+  Recall paths and the Recall policy name follow Microsoft's public
+  documentation and can change between builds. Verify them on yours.
 #>
 param([switch]$DryRun, [switch]$Yes)
 
@@ -203,8 +203,8 @@ Report-EventLog "Partition diagnostic log" 'Microsoft-Windows-Partition/Diagnost
 Report-EventLog "Driver framework log" 'Microsoft-Windows-DriverFrameworks-UserMode/Operational'
 Report-EventLog "Kernel PnP configuration log" 'Microsoft-Windows-Kernel-PnP/Configuration'
 Report-EventLog "Storage service diagnostic log" 'Microsoft-Windows-Storsvc/Diagnostic'
-Write-Host "Digital Forensics Cookbook cites Event ID 507 for connected-device information."
-Write-Host "The channel was not named in the passage read, so four candidate channels are sized above."
+Write-Host "Device-connection events (for example Event ID 507) are spread across several channels."
+Write-Host "Four of the usual ones are sized above; event messages are not read."
 Write-Host ""
 Report-SubkeyCount "Bluetooth paired devices" 'HKLM:\SYSTEM\CurrentControlSet\Services\BTHPORT\Parameters\Devices' 'This key is often readable only by SYSTEM.'
 
