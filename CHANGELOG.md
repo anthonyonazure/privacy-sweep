@@ -4,6 +4,7 @@
 
 ### Added
 
+- `household/`: advice-only checklists for what scripts cannot reach. Smart speakers, cameras and robot vacuums, cars, watches and trackers, consoles and streaming devices, printers and copiers, drives, retiring a phone or computer, and the Google, Apple, and Microsoft accounts behind them. Steps that could not be confirmed are marked "check first".
 - More report-only lines in the extra audits for iPhone and iPad backups (macOS `MobileSync`, both Windows paths), Windows Credential Manager files and the macOS login keychain (presence and size only), Chrome, Edge and Brave autofill and saved-login files, Linux Timeshift snapshots, `/var/crash` and systemd core dumps, and Linux `iwd` and `wpa_supplicant` Wi-Fi data. Nothing is read or printed from them.
 - Two more opt-in clears in `local-artifacts/`: `--clear-crash-dumps` (Linux `/var/crash` and systemd core dumps, root only, included in `--all-opt-in`) and `--clear-device-backups` / `-ClearDeviceBackups` (iPhone and iPad backups; needs the typed phrase `DELETE DEVICE BACKUPS`; never part of `--all-opt-in` because a backup can be the only copy of a phone). Timeshift snapshots, the keychain, and saved logins are reported, not deleted.
 - `docs/file-metadata.md`: what photos and Office files carry inside them (GPS, camera, author, edit history), how to see it with ExifTool, and why this repo reports but does not rewrite it.
