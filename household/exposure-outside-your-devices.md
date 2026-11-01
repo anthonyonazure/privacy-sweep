@@ -21,7 +21,7 @@ databases use that to place devices indoors.
 
 | Service | How to ask | Notes |
 | --- | --- | --- |
-| Google Street View | Open your address in Street View, choose Report a problem, then Request blurring, then My home. | Google says a blur is permanent. You cannot undo it later, so decide first. |
+| Google Street View | Open your address in Street View, choose Report a problem, then Request blurring, then My home. | A blur is reported to be permanent. Assume you cannot undo it later, so decide first. |
 | Apple Look Around | Email MapsImageCollection@apple.com with your address and what to blur. | Reply times vary. |
 | Bing Streetside | Reporting steps could not be confirmed (check first). | Treat blurring as unreliable. |
 
