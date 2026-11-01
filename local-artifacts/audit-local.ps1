@@ -210,7 +210,7 @@ if ($env:LOCALAPPDATA -and -not $env:PRIVACY_SWEEP_HOME_ROOT) {
 if ($env:ProgramData) {
   Report-Dir 'Samsung Magician' (Join-Path $env:ProgramData 'Samsung\Samsung Magician')
 }
-Write-Host "RDP cache coverage in this corpus is thin. Presence and size only."
+Write-Host "RDP cache: presence and size only."
 Write-Host "USBSTOR is not deleted. See the Windows audit for the key, and SECURITY.md."
 Write-Host ""
 Write-Host "Audit only: counts, sizes, and paths. Contents, passwords, message bodies, and row values are not printed."

@@ -1,10 +1,9 @@
 # Office MRU, screenshots, clipboard managers, and the other named stores
 
-Registry-analysis texts (Specialized DFIR and the Windows forensics references) look at
-Office MRU and RecentDocs because they name files you opened after the Recent folder
-was emptied. Thumbnail and screenshot folders are the picture that outlived the
-window. Practical Linux Forensics notes persistent clipboard managers (Klipper and
-the same idea in other desktops): the OS clipboard clear does not empty them.
+Office MRU and RecentDocs name files you opened after the Recent folder was emptied.
+Thumbnail and screenshot folders are the picture that outlived the window. Persistent
+clipboard managers (Klipper and the same idea in other desktops) keep copied text: the
+OS clipboard clear does not empty them.
 
 This folder is the audit, plus the opt-in clears, for those stores and for the other
 section-4 items that did not already have a script: notifications, `.DS_Store`, DNS

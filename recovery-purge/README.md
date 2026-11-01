@@ -1,11 +1,9 @@
 # Opt-in purge of recovery structures
 
-Examiners treat these stores as time capsules. A normal delete, and even a free-space
-fill, does not remove them. Digital Forensics Cookbook and ransomware-recovery material
-describe Volume Shadow Copies as the place a previous copy of a file still lives.
-macOS forensics material describes APFS local snapshots (including local Time Machine
-snapshots) the same way, and Document Revisions (`.DocumentRevisions-V100`) as hourly
-prior versions of documents.
+These stores are time capsules. A normal delete, and even a free-space fill, does not
+remove them. Volume Shadow Copies are the place a previous copy of a file still lives.
+APFS local snapshots (including local Time Machine snapshots) work the same way, and
+Document Revisions (`.DocumentRevisions-V100`) keep hourly prior versions of documents.
 
 ## What this tool does
 

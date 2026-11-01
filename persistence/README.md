@@ -1,12 +1,10 @@
 # Persistence audit (never deletes)
 
 Autoruns-style checks exist because a program can start again after you close it.
-Hands-on incident-response material and macOS persistence notes look at launch
-agents, launch daemons, and login items. Windows registry texts look at Run keys
-and non-Microsoft scheduled tasks. Linux material looks at user systemd units,
-cron, and autostart `.desktop` files. A WMI permanent event subscription is the
-quiet Windows variant; this corpus is thin on the query text, so the tool counts
-filters and does not print the query.
+The usual places are launch agents, launch daemons, and login items on macOS; Run keys
+and non-Microsoft scheduled tasks on Windows; and user systemd units, cron, and
+autostart `.desktop` files on Linux. A WMI permanent event subscription is the quiet
+Windows variant; the tool counts filters and does not print the query.
 
 ## What this tool does
 

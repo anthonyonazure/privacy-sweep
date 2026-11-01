@@ -16,13 +16,11 @@ the list files on 2026-10-27.
 
 ## 1. Turn ACR off on the TV
 
-Anselmi, Imani, Ladd, and Tyson, in
-[Watching TV with the Second-Party](https://arxiv.org/abs/2409.06203) (ACM IMC 2024,
-[DOI 10.1145/3646547.3689013](https://doi.org/10.1145/3646547.3689013)), measured Samsung and
-LG sets. ACR still ran when the set was used as a "dumb" HDMI display. Signing in or out
-did not stop it. Opting out of the on-TV advertising and viewing-information settings
-produced no further contact with the ACR domains they had already identified, and no new
-ACR domains. That result is for the Samsung and LG sets they measured. It does not cover
+Published network measurements of Samsung and LG sets found that ACR still ran when the
+set was used as a "dumb" HDMI display. Signing in or out did not stop it. Opting out of
+the on-TV advertising and viewing-information settings produced no further contact with
+the ACR domains already identified, and no new ACR domains. That result is for the
+Samsung and LG sets that were measured. It does not cover
 Roku, Vizio, Hisense, or Fire TV. Turn the settings off anyway, then use DNS as a backstop.
 
 Menus move every year. If a path below is missing, use the search box in Settings or the
@@ -190,8 +188,7 @@ with the new exceptions appended. It does not drop a rule it did not add. It the
 `POST /control/filtering/refresh`.
 
 Use the adblock copies of the HaGeZi lists. AdGuard's own syntax
-([dns filtering](https://adguard-dns.io/kb/general/dns-filtering-syntax/)) treats `||name^`
-as the name plus its subdomains, and a simple domain as that host only. `$important` can
+treats `||name^` as the name plus its subdomains, and a simple domain as that host only. `$important` can
 beat an exception; the HaGeZi native lists checked on 2026-10-27 do not use it.
 
 `acr-clients.sh --adguard` searches `GET /control/querylog` once per suffix and keeps rows
@@ -202,14 +199,13 @@ are only what the search returned.
 
 NextDNS is not configured by these scripts. Two limits matter if you use it for a TV.
 
-The free plan is 300,000 queries a month ([pricing](https://nextdns.io/pricing)). Past that
+The free plan is 300,000 queries a month. Past that
 cap, NextDNS keeps answering and stops blocking, the same as a resolver with no filter.
-A TV that is left on can spend the month's quota. The help center says the same about
-filtering and logging stopping at the cap.
+A TV that is left on can spend the month's quota. Filtering and logging stop at the
+cap as well.
 
-NextDNS native tracking protection does not cover TV ACR. The domain files in
-[nextdns/native-tracking-domains](https://github.com/nextdns/native-tracking-domains/tree/main/domains)
-on 2026-10-27 were alexa, apple, huawei, roku, samsung, sonos, windows, and xiaomi.
+NextDNS native tracking protection does not cover TV ACR. Its domain files, checked on
+2026-10-27, were alexa, apple, huawei, roku, samsung, sonos, windows, and xiaomi.
 There was no LG, Vizio, Hisense, or Amazon file. The Samsung file is phone and Knox
 metrics (`nmetrics.samsung.com`, `insights.samsung.com`, and similar), not
 `samsungacr.com`, `samsungcloud.tv`, or `samsungads.com`. The Roku file is only

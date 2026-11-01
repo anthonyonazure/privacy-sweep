@@ -2,7 +2,7 @@
 
 privacy-sweep clears the history stores your operating system keeps about **your own activity on
 your own device**. It is a privacy-hygiene tool, the same category as the built-in Disk Cleanup or
-[BleachBit](https://www.bleachbit.org/). Please use it that way.
+BleachBit. Please use it that way.
 
 ## Use it for
 

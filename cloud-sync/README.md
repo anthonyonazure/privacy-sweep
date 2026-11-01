@@ -1,10 +1,8 @@
 # Cloud sync metadata (audit only)
 
-Digital forensics writing on cloud accounts makes one point that a disk wipe does not:
-the service keeps its own timestamps, device list, version history, and activity log.
-Clearing a folder on the laptop does not clear the account. An Apress-style look at
-Dropbox, and the cloud chapter of the Digital Forensics Cookbook, both treat the
-provider's copy as the one that survives the machine.
+A disk wipe does not reach the cloud account: the service keeps its own timestamps,
+device list, version history, and activity log. Clearing a folder on the laptop does
+not clear the account. The provider's copy survives the machine.
 
 ## What this tool does
 

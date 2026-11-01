@@ -14,7 +14,7 @@ one you want or the whole set.
 
 Everyday privacy hygiene: before you sell or donate a machine, after using a shared computer, or
 just to keep your data footprint small. This is the same category of tool as
-[BleachBit](https://www.bleachbit.org/) and the built-in Windows Disk Cleanup, packaged so you can
+BleachBit and the built-in Windows Disk Cleanup, packaged so you can
 see exactly what each script does before you run it.
 
 **Use it only on devices you own or are authorized to administer.** Don't use it to destroy records

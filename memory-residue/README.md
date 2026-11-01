@@ -1,10 +1,9 @@
 # Memory residue
 
-Digital Forensics Cookbook treats `pagefile.sys`, `hiberfil.sys`, and crash dumps as
-RAM that was written to disk: paths, process state, and sometimes secrets. OS X
-incident-response notes treat `sleepimage` the same way, with the caveat that macOS
-has encrypted that file since 10.7. Practical Linux Forensics treats swap as a
-carvable copy of memory.
+`pagefile.sys`, `hiberfil.sys`, and crash dumps are RAM that was written to disk: paths,
+process state, and sometimes secrets. The macOS `sleepimage` is the same idea, with the
+caveat that macOS has encrypted that file since 10.7. Linux swap is a carvable copy of
+memory.
 
 ## What this tool does
 

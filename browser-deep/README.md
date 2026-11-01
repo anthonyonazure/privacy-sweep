@@ -1,7 +1,6 @@
 # Browser deep stores
 
-A history wipe removes the history database and often the cookie jar. Web forensics
-and the Chromium profile layout described in browser-forensics references still leave
+A history wipe removes the history database and often the cookie jar. It still leaves
 LevelDB (local storage), IndexedDB, Cache_Data, service-worker caches, session-restore
 files (`Current Session`, `Current Tabs`, Firefox `sessionstore`), and Crashpad dumps.
 Those can hold site data, the list of tabs that were open, and crash contents.

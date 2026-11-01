@@ -12,8 +12,8 @@
   device serials, command history, Recall content, or credentials.
   -DryRun and -Yes exist so the flag style matches the other scripts; both
   print the same report.
-  Recall paths and the Recall policy name follow Microsoft's public
-  documentation and can change between builds. Verify them on yours.
+  Recall paths and the Recall policy name can change between Windows
+  builds. Verify them on yours.
 #>
 param([switch]$DryRun, [switch]$Yes)
 
