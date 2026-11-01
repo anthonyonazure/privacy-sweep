@@ -17,6 +17,9 @@ for the nearest match under Privacy or Settings.
 4. **Consoles, printers, drives, and retiring devices**
    ([consoles-printers-drives-retiring.md](consoles-printers-drives-retiring.md)).
 
+Also useful: [what others hold about your home](exposure-outside-your-devices.md), which
+covers `_nomap` Wi-Fi names, street-photo blurring, and Wi-Fi map removal.
+
 ## Three rules that apply everywhere
 
 - **A factory reset wipes the device, not your account.** Cloud copies, subscriptions, and
