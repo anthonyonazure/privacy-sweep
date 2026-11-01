@@ -137,6 +137,15 @@ for chrome in "Google/Chrome" "BraveSoftware/Brave-Browser" "Microsoft Edge"; do
 done
 echo
 
+echo "### Notes, Photos, and chat apps"
+echo "Note text, photo records, and messages are not read."
+echo
+report_protected_dir "Notes database folder (NoteStore.sqlite)" "$HOME/Library/Group Containers/group.com.apple.notes"
+report_protected_dir "Photos library database folder (Photos.sqlite)" "$HOME/Pictures/Photos Library.photoslibrary/database"
+report_dir_summary "Signal Desktop data" "$HOME/Library/Application Support/Signal"
+report_dir_summary "Discord data" "$HOME/Library/Application Support/Discord"
+echo
+
 echo "These stores are reported only. Nothing here is deleted by privacy-sweep."
 echo "Messages, SSH known_hosts, cloud CLI folders, and the keychain are account or identity data;"
 echo "clear them yourself from the owning app if you want them gone."

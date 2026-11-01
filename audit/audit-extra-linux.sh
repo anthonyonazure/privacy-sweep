@@ -158,6 +158,15 @@ report_dir_summary "Azure CLI config folder (tokens not read)" "$HOME/.azure"
 report_dir_summary "Google Cloud CLI config folder (tokens not read)" "$XDG_CONF/gcloud"
 echo
 
+echo "### Desktop search indexes and chat apps"
+echo "Indexed names and messages are not read."
+echo
+report_dir_summary "KDE Baloo file index" "$XDG_DATA/baloo"
+report_dir_summary "GNOME Tracker file index" "$HOME/.cache/tracker3/files"
+report_dir_summary "Signal Desktop data" "$XDG_CONF/Signal"
+report_dir_summary "Discord data" "$XDG_CONF/discord"
+echo
+
 echo "These stores are reported only. Nothing here is deleted by privacy-sweep."
 echo "Keyrings, SSH known_hosts, and cloud CLI folders are identity data;"
 echo "clear them yourself from the owning app if you want them gone."

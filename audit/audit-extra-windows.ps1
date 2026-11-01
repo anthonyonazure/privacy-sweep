@@ -272,5 +272,17 @@ foreach ($b in @(
 }
 Write-Host ""
 
+# ---------------------------------------------------------------------------
+Write-Host "### Unsaved notes, crash reports, and VPN profiles"
+Write-Host "Note text, report contents, and profile settings are not read."
+Write-Host ""
+$notepad = Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.WindowsNotepad_8wekyb3d8bbwe\LocalState'
+Report-DirSummary "Notepad tab state (Windows 11 keeps unsaved tab text here)" (Join-Path $notepad 'TabState')
+Report-DirSummary "Notepad window state" (Join-Path $notepad 'WindowState')
+Report-DirSummary "Windows Error Reporting (system archive and queue)" (Join-Path $env:ProgramData 'Microsoft\Windows\WER')
+Report-DirSummary "Windows Error Reporting (this user)" (Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\WER')
+Report-File "VPN connection profiles (rasphone.pbk)" (Join-Path $env:APPDATA 'Microsoft\Network\Connections\Pbk\rasphone.pbk')
+Write-Host ""
+
 Write-Host "These stores are reported only. Nothing here is deleted by privacy-sweep."
 Write-Host "Recall, typed paths, and RDP history can be cleared from Windows settings or the owning app."

@@ -155,6 +155,10 @@ function Report-Chat {
 $chatRoot = $homeRoot
 if ($env:APPDATA -and -not $env:PRIVACY_SWEEP_HOME_ROOT) { $chatRoot = $env:APPDATA }
 Report-Chat 'Teams' (Join-Path $chatRoot 'Microsoft\Teams')
+if ($env:LOCALAPPDATA -and -not $env:PRIVACY_SWEEP_HOME_ROOT) {
+  Report-Chat 'Teams (new app)' (Join-Path $env:LOCALAPPDATA 'Packages\MSTeams_8wekyb3d8bbwe\LocalCache\Microsoft\MSTeams')
+}
+Report-Chat 'Signal' (Join-Path $chatRoot 'Signal')
 Report-Chat 'Slack' (Join-Path $chatRoot 'Slack')
 Report-Chat 'Discord' (Join-Path $chatRoot 'discord')
 Report-Chat 'Telegram' (Join-Path $chatRoot 'Telegram Desktop')
