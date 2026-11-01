@@ -7,6 +7,8 @@
 #   ./clear-local.sh --dry-run --all-opt-in
 #   ./clear-local.sh --clear-screenshots --apply
 #   ./clear-local.sh --clear-tool-history --apply   # .viminfo, .lesshst, REPL and DB-client history
+#   ./clear-local.sh --clear-crash-dumps --apply    # Linux /var/crash and systemd core dumps (root)
+#   ./clear-local.sh --clear-device-backups --apply # iPhone/iPad backups; typed phrase; not in --all-opt-in
 #   ./clear-local.sh --vacuum-auditd --apply
 set -euo pipefail
 
@@ -28,6 +30,8 @@ DO_DNS=false
 DO_TRASH=false
 DO_AUDITD=false
 DO_TOOLS=false
+DO_DUMPS=false
+DO_BACKUPS=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -43,6 +47,8 @@ while [[ $# -gt 0 ]]; do
     --clear-external-trash) DO_TRASH=true ;;
     --vacuum-auditd) DO_AUDITD=true ;;
     --clear-tool-history) DO_TOOLS=true ;;
+    --clear-crash-dumps) DO_DUMPS=true ;;
+    --clear-device-backups) DO_BACKUPS=true ;;
     --help|-h) grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
@@ -57,6 +63,7 @@ if [[ "$ALL" == true ]]; then
   DO_DNS=true
   DO_TRASH=true
   DO_TOOLS=true
+  DO_DUMPS=true
 fi
 
 HOME_ROOT="${PRIVACY_SWEEP_HOME_ROOT:-$HOME}"
@@ -270,6 +277,88 @@ if [[ "$DO_TOOLS" == true ]]; then
   echo
 fi
 
+dump_dir_allowed() {
+  case "$1" in
+    /var/crash|/var/lib/systemd/coredump) return 0 ;;
+  esac
+  [[ -n "${PRIVACY_SWEEP_CRASH_DIR:-}" && "$1" == "$PRIVACY_SWEEP_CRASH_DIR" ]] && return 0
+  [[ -n "${PRIVACY_SWEEP_COREDUMP_DIR:-}" && "$1" == "$PRIVACY_SWEEP_COREDUMP_DIR" ]] && return 0
+  return 1
+}
+
+if [[ "$DO_DUMPS" == true ]]; then
+  echo "-- Crash dumps and core dumps (Linux) --"
+  echo "Apport and kdump files and systemd core dumps can hold a copy of process or kernel memory."
+  echo "They are only written again if something crashes. File contents are not printed."
+  CRASH_DIR="${PRIVACY_SWEEP_CRASH_DIR:-/var/crash}"
+  CORE_DIR="${PRIVACY_SWEEP_COREDUMP_DIR:-/var/lib/systemd/coredump}"
+  for dir in "$CRASH_DIR" "$CORE_DIR"; do
+    if ! dump_dir_allowed "$dir"; then
+      echo "Refusing unexpected path: $dir"
+      continue
+    fi
+    if [[ ! -d "$dir" ]]; then
+      echo "Not present: $dir"
+      continue
+    fi
+    echo "Path: $dir  Files: $(count_files "$dir") (as seen by this account)"
+    if will_apply; then
+      if [[ -z "${PRIVACY_SWEEP_CRASH_DIR:-}${PRIVACY_SWEEP_COREDUMP_DIR:-}" && "$(id -u)" -ne 0 ]]; then
+        echo "Refusing: these folders are root-only. Nothing was changed."
+        continue
+      fi
+      find -P "$dir" -mindepth 1 -delete 2>/dev/null || true
+      left="$(count_files "$dir")"
+      if [[ "${left:-0}" -eq 0 ]]; then
+        echo "Cleared contents of $dir"
+      else
+        echo "Could not delete everything in $dir. Files left: $left"
+      fi
+    else
+      echo "Dry run: would clear contents. Nothing was deleted."
+    fi
+  done
+  echo
+fi
+
+if [[ "$DO_BACKUPS" == true ]]; then
+  echo "-- iPhone and iPad backups --"
+  echo "WARNING: each backup is a full copy of a device. If it is your only copy, it cannot be recovered."
+  echo "This is not part of --all-opt-in. Backup folder names are not listed."
+  backup_root="$HOME_ROOT/Library/Application Support/MobileSync/Backup"
+  case "$backup_root" in
+    */MobileSync/Backup) ;;
+    *) echo "Refusing unexpected path."; backup_root="" ;;
+  esac
+  if [[ -z "$backup_root" ]]; then
+    :
+  elif [[ ! -d "$backup_root" ]]; then
+    echo "Not present: $backup_root"
+  elif [[ "$(user_dir_status "$backup_root")" == "protected" ]]; then
+    echo "Path: $backup_root"
+    echo "Present: protected (grant Full Disk Access to this terminal to count or delete it). Nothing was changed."
+  else
+    n_backups="$(find -P "$backup_root" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ' || true)"
+    echo "Path: $backup_root  Backups: ${n_backups:-0}  Files: $(count_files "$backup_root")"
+    if will_apply; then
+      if [[ "${n_backups:-0}" -eq 0 ]]; then
+        echo "No backups to delete."
+      elif confirm_phrase "DELETE DEVICE BACKUPS"; then
+        find -P "$backup_root" -mindepth 1 -delete 2>/dev/null || true
+        left="$(count_files "$backup_root")"
+        if [[ "${left:-0}" -eq 0 ]]; then
+          echo "Deleted the contents of $backup_root"
+        else
+          echo "Could not delete everything in $backup_root. Files left: $left"
+        fi
+      fi
+    else
+      echo "Dry run: would delete after you type a confirmation phrase. Nothing was deleted."
+    fi
+  fi
+  echo
+fi
+
 if [[ "$DO_AUDITD" == true ]]; then
   echo "-- auditd vacuum --"
   echo "WARNING: this discards a syscall audit trail. Forward-secure journal sealing can show other log tampering. See docs/anti-forensics.md."
@@ -291,7 +380,7 @@ if [[ "$DO_AUDITD" == true ]]; then
   echo
 fi
 
-if [[ "$DO_SHOTS" != true && "$DO_CLIP" != true && "$DO_NOTE" != true && "$DO_DS" != true && "$DO_DNS" != true && "$DO_TRASH" != true && "$DO_AUDITD" != true && "$DO_TOOLS" != true ]]; then
+if [[ "$DO_SHOTS" != true && "$DO_CLIP" != true && "$DO_NOTE" != true && "$DO_DS" != true && "$DO_DNS" != true && "$DO_TRASH" != true && "$DO_AUDITD" != true && "$DO_TOOLS" != true && "$DO_DUMPS" != true && "$DO_BACKUPS" != true ]]; then
   echo "No clear flag was set. Pass --all-opt-in or a specific --clear-* flag."
 fi
 

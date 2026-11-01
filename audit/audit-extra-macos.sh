@@ -119,6 +119,26 @@ report_dir_summary "Docker Desktop container data" "$HOME/Library/Containers/com
 report_file_presence "macOS install history" "/Library/Receipts/InstallHistory.plist"
 echo
 
+echo "### Phone backups, saved passwords, and browser form data"
+echo "Backup contents, keychain items, saved logins, and form entries are not read."
+echo
+BACKUPS="$HOME/Library/Application Support/MobileSync/Backup"
+report_protected_dir "iPhone and iPad backups (each folder is a full copy of a device)" "$BACKUPS"
+if [[ -d "$BACKUPS" && -r "$BACKUPS" ]]; then
+  echo "Backup folders: $(find "$BACKUPS" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')"
+  echo
+fi
+report_file_presence "Login keychain (saved passwords, notes, backup passwords)" "$HOME/Library/Keychains/login.keychain-db"
+for chrome in "Google/Chrome" "BraveSoftware/Brave-Browser" "Microsoft Edge"; do
+  base="$HOME/Library/Application Support/$chrome/Default"
+  [[ -d "$base" ]] || continue
+  report_file_presence "$chrome autofill and form data (Web Data)" "$base/Web Data"
+  report_file_presence "$chrome saved logins (Login Data)" "$base/Login Data"
+done
+echo
+
 echo "These stores are reported only. Nothing here is deleted by privacy-sweep."
-echo "Messages, SSH known_hosts, and cloud CLI folders are account or identity data;"
+echo "Messages, SSH known_hosts, cloud CLI folders, and the keychain are account or identity data;"
 echo "clear them yourself from the owning app if you want them gone."
+echo "iPhone backups can be removed in Finder (device > Manage Backups) or with"
+echo "local-artifacts/clear-local.sh --clear-device-backups."

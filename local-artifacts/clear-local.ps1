@@ -4,10 +4,11 @@
   printer spool, Office temps, DNS, and (separately) event logs and the search index.
 .NOTES
   Dry-run unless -Apply. -Yes does not delete. -AllOptIn does not include
-  -ClearEventLogs or -ResetSearchIndex.
+  -ClearEventLogs, -ResetSearchIndex, or -ClearDeviceBackups.
   Mail files are never deleted. Message DBs (IndexedDB, Local Storage, tdata) are never deleted.
   Phrases: CLEAR EVENT LOGS
            RESET SEARCH INDEX
+           DELETE DEVICE BACKUPS
   Not part of clear-all.
 #>
 param(
@@ -26,6 +27,7 @@ param(
   [switch]$ClearChatCaches,
   [switch]$ClearTypedPaths,
   [switch]$ClearRdpHistory,
+  [switch]$ClearDeviceBackups,
   [switch]$ClearEventLogs,
   [switch]$ResetSearchIndex
 )
@@ -84,7 +86,7 @@ Write-Host "Nothing is deleted unless you pass -Apply. -Yes does not delete."
 Write-Host "This is not part of clear-all."
 Write-Host ""
 
-$any = $ClearOfficeMru -or $ClearRecentDocs -or $ClearScreenshots -or $ClearClipboardManagers -or $ClearNotifications -or $ClearPrinterSpool -or $ClearOfficeTemps -or $FlushDns -or $ClearChatCaches -or $ClearTypedPaths -or $ClearRdpHistory -or $ClearEventLogs -or $ResetSearchIndex
+$any = $ClearOfficeMru -or $ClearRecentDocs -or $ClearScreenshots -or $ClearClipboardManagers -or $ClearNotifications -or $ClearPrinterSpool -or $ClearOfficeTemps -or $FlushDns -or $ClearChatCaches -or $ClearTypedPaths -or $ClearRdpHistory -or $ClearDeviceBackups -or $ClearEventLogs -or $ResetSearchIndex
 if (-not $any) {
   Write-Host "No clear flag was set."
   Write-Host "Dry run: nothing was deleted."
@@ -259,6 +261,47 @@ if ($ClearRdpHistory) {
     }
   } else {
     Write-Host "Not present: $defaultRdp"
+  }
+  Write-Host ""
+}
+if ($ClearDeviceBackups) {
+  Write-Host "-- iPhone and iPad backups --"
+  Write-Host "WARNING: each backup is a full copy of a device. If it is your only copy, it cannot be recovered."
+  Write-Host "This is not part of -AllOptIn. Backup folder names are not listed."
+  $backupRoots = @()
+  if ($env:PRIVACY_SWEEP_HOME_ROOT) {
+    $backupRoots += (Join-Path $homeRoot 'MobileSync\Backup')
+  } else {
+    if ($env:APPDATA) { $backupRoots += (Join-Path $env:APPDATA 'Apple Computer\MobileSync\Backup') }
+    if ($env:USERPROFILE) { $backupRoots += (Join-Path $env:USERPROFILE 'Apple\MobileSync\Backup') }
+  }
+  $backupRoots = @($backupRoots | Where-Object { $_ })
+  $found = @($backupRoots | Where-Object { Test-Path -LiteralPath $_ -PathType Container })
+  foreach ($root in $backupRoots) {
+    if ($found -notcontains $root) { Write-Host "Not present: $root" }
+  }
+  $allowed = $true
+  if ((Test-WillApply) -and $found.Count -gt 0) {
+    $allowed = Confirm-Phrase "DELETE DEVICE BACKUPS"
+    if (-not $allowed) { Write-Host "Nothing was deleted." }
+  }
+  foreach ($root in $found) {
+    $items = @(Get-ChildItem -LiteralPath $root -Force -ErrorAction SilentlyContinue)
+    $files = @(Get-ChildItem -LiteralPath $root -Recurse -File -Force -ErrorAction SilentlyContinue)
+    Write-Host "Path: $root  Backups: $(@($items | Where-Object { $_.PSIsContainer }).Count)  Files: $($files.Count)"
+    if (Test-WillApply) {
+      if (-not $allowed) { continue }
+      if ((Split-Path -Leaf $root) -ne 'Backup') { Write-Host "Refusing unexpected path: $root"; continue }
+      $items | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+      $left = @(Get-ChildItem -LiteralPath $root -Recurse -File -Force -ErrorAction SilentlyContinue).Count
+      if ($left -eq 0) {
+        Write-Host "Deleted the contents of $root"
+      } else {
+        Write-Host "Could not delete everything in $root. Files left: $left"
+      }
+    } else {
+      Write-Host "Dry run: would delete after you type a confirmation phrase. Nothing was deleted."
+    }
   }
   Write-Host ""
 }

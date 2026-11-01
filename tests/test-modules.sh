@@ -260,6 +260,41 @@ if printf '%s\n' "$rdp_out" | grep -q 'secret-server'; then
   fail "RDP clear printed a server name"
 fi
 
+echo "== device backups and crash dumps =="
+bk_home="$TMP/bk-home"
+bk_dir="$bk_home/Library/Application Support/MobileSync/Backup"
+mkdir -p "$bk_dir/AAAA-1111" "$bk_home/Documents" "$TMP/dump-crash" "$TMP/dump-core"
+printf 'SECRET-BACKUP\n' > "$bk_dir/AAAA-1111/Manifest.db"
+printf 'KEEP-DOC\n' > "$bk_home/Documents/keep.txt"
+printf 'SECRET-CRASH\n' > "$TMP/dump-crash/app.crash"
+printf 'SECRET-CORE\n' > "$TMP/dump-core/core.1"
+bk_out="$(PRIVACY_SWEEP_HOME_ROOT="$bk_home" bash "$ROOT/local-artifacts/clear-local.sh" --clear-device-backups --apply --yes </dev/null)"
+[[ -f "$bk_dir/AAAA-1111/Manifest.db" ]] || fail "--apply --yes without the phrase deleted a device backup"
+printf '%s\n' "$bk_out" | grep -q 'DELETE DEVICE BACKUPS' || fail "device backup clear did not ask for its phrase"
+if printf '%s\n' "$bk_out" | grep -qE 'SECRET-BACKUP|AAAA-1111'; then
+  fail "device backup clear printed a name or contents"
+fi
+all_out="$(PRIVACY_SWEEP_HOME_ROOT="$bk_home" PRIVACY_SWEEP_CRASH_DIR="$TMP/dump-crash" PRIVACY_SWEEP_COREDUMP_DIR="$TMP/dump-core" PRIVACY_SWEEP_VOLUME_ROOT="$TMP/no-volumes" bash "$ROOT/local-artifacts/clear-local.sh" --all-opt-in --dry-run)"
+if printf '%s\n' "$all_out" | grep -q 'iPhone and iPad backups'; then
+  fail "--all-opt-in included device backups"
+fi
+printf '%s\n' "$all_out" | grep -q 'Crash dumps and core dumps' || fail "--all-opt-in left out crash dumps"
+PRIVACY_SWEEP_CONFIRM='DELETE DEVICE BACKUPS' PRIVACY_SWEEP_HOME_ROOT="$bk_home" bash "$ROOT/local-artifacts/clear-local.sh" --clear-device-backups --apply >/dev/null </dev/null
+[[ ! -e "$bk_dir/AAAA-1111" ]] || fail "device backup survived the right phrase"
+[[ -d "$bk_dir" && -f "$bk_home/Documents/keep.txt" ]] || fail "device backup clear removed more than the backups"
+PRIVACY_SWEEP_CRASH_DIR="$TMP/dump-crash" PRIVACY_SWEEP_COREDUMP_DIR="$TMP/dump-core" bash "$ROOT/local-artifacts/clear-local.sh" --clear-crash-dumps --yes >/dev/null </dev/null
+[[ -f "$TMP/dump-crash/app.crash" ]] || fail "--yes alone deleted a crash dump"
+PRIVACY_SWEEP_CRASH_DIR="$TMP/dump-crash" PRIVACY_SWEEP_COREDUMP_DIR="$TMP/dump-core" bash "$ROOT/local-artifacts/clear-local.sh" --clear-crash-dumps --apply >/dev/null </dev/null
+[[ ! -e "$TMP/dump-crash/app.crash" && ! -e "$TMP/dump-core/core.1" ]] || fail "crash dumps were not cleared"
+[[ -d "$TMP/dump-crash" && -d "$TMP/dump-core" ]] || fail "crash dump folders were removed"
+bk_win="$TMP/bk-win"
+mkdir -p "$bk_win/MobileSync/Backup/AAAA-1111"
+printf 'SECRET-BACKUP\n' > "$bk_win/MobileSync/Backup/AAAA-1111/Manifest.db"
+PRIVACY_SWEEP_HOME_ROOT="$bk_win" pwsh -NoProfile -NonInteractive -File "$ROOT/local-artifacts/clear-local.ps1" -ClearDeviceBackups -Apply -Yes </dev/null >/dev/null
+[[ -f "$bk_win/MobileSync/Backup/AAAA-1111/Manifest.db" ]] || fail "Windows device backup clear ran without its phrase"
+PRIVACY_SWEEP_CONFIRM='DELETE DEVICE BACKUPS' PRIVACY_SWEEP_HOME_ROOT="$bk_win" pwsh -NoProfile -NonInteractive -File "$ROOT/local-artifacts/clear-local.ps1" -ClearDeviceBackups -Apply </dev/null >/dev/null
+[[ ! -e "$bk_win/MobileSync/Backup/AAAA-1111" ]] || fail "Windows device backup survived the right phrase"
+
 echo "== hardware follow-up =="
 timeout_out="$(
   # shellcheck source=audit/report-lib.sh

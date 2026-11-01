@@ -398,19 +398,19 @@ echo "== extra audits are wired in and report-only =="
 grep -q 'audit-extra-macos.sh' audit/audit-macos.sh || fail "macOS audit does not run the extra report"
 grep -q 'audit-extra-linux.sh' audit/audit-linux.sh || fail "Linux audit does not run the extra report"
 grep -q 'audit-extra-windows.ps1' audit/audit-windows.ps1 || fail "Windows audit does not run the extra report"
-for needle in 'CoreAIPlatform.00' 'ConsoleHost_history.txt' TypedPaths WordWheelQuery MountPoints2 'Terminal Server Client' 'setupapi.dev.log' RegBack; do
+for needle in 'CoreAIPlatform.00' 'ConsoleHost_history.txt' TypedPaths WordWheelQuery MountPoints2 'Terminal Server Client' 'setupapi.dev.log' RegBack 'MobileSync\Backup' 'Microsoft\Credentials' 'Login Data'; do
   grep -F -q "$needle" audit/audit-extra-windows.ps1 || fail "windows extra audit missing $needle"
 done
 if grep -nE 'reg (export|save|query)|Remove-Item|Set-Content|Out-File|Add-Content' audit/audit-extra-windows.ps1; then
   fail "windows extra audit would export or write"
 fi
-for needle in 'chat.db' 'com.apple.Bluetooth.plist' 'com.apple.sharingd.plist' '.zsh_sessions' 'known_hosts'; do
+for needle in 'chat.db' 'com.apple.Bluetooth.plist' 'com.apple.sharingd.plist' '.zsh_sessions' 'known_hosts' 'MobileSync/Backup' 'login.keychain-db' 'Web Data'; do
   grep -F -q "$needle" audit/audit-extra-macos.sh || fail "macOS extra audit missing $needle"
 done
 if grep -nE '(sqlite3|strings|cat|plutil|defaults)[[:space:]].*(chat\.db|Bluetooth|sharingd)' audit/audit-extra-macos.sh; then
   fail "macOS extra audit would read Messages or Bluetooth contents"
 fi
-for needle in '/var/log/apt/history.log' '/var/log/dpkg.log' '/var/lib/bluetooth' 'keyrings' 'known_hosts'; do
+for needle in '/var/log/apt/history.log' '/var/log/dpkg.log' '/var/lib/bluetooth' 'keyrings' 'known_hosts' '/timeshift' '/var/crash' '/var/lib/iwd' '/etc/wpa_supplicant'; do
   grep -F -q "$needle" audit/audit-extra-linux.sh || fail "Linux extra audit missing $needle"
 done
 extra_home="$TMP/extra-home"

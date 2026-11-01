@@ -119,11 +119,27 @@ echo "### Bluetooth, Wi-Fi, and location"
 report_dir_guarded "Bluetooth paired devices (root-only)" "/var/lib/bluetooth"
 report_dir_guarded "NetworkManager saved connections (root-only)" "/etc/NetworkManager/system-connections"
 report_dir_guarded "GeoClue location service data" "/var/lib/geoclue"
+report_dir_guarded "iwd saved networks (root-only)" "/var/lib/iwd"
+report_dir_guarded "wpa_supplicant configuration (root-only)" "/etc/wpa_supplicant"
+echo
+
+echo "### System snapshots and crash dumps"
+echo "A snapshot is a full copy of old files; a crash dump can hold a memory image."
+echo
+report_dir_guarded "Timeshift snapshots" "/timeshift"
+report_dir_guarded "Kernel and application crash dumps (root-only)" "/var/crash"
+report_dir_guarded "Core dumps kept by systemd (root-only)" "/var/lib/systemd/coredump"
 echo
 
 echo "### Desktop keyrings (contents never read)"
 report_dir_summary "GNOME Keyring files" "$XDG_DATA/keyrings"
 report_dir_summary "KDE Wallet files" "$XDG_DATA/kwalletd"
+for chrome in "google-chrome" "chromium" "BraveSoftware/Brave-Browser" "microsoft-edge"; do
+  base="$XDG_CONF/$chrome/Default"
+  [[ -d "$base" ]] || continue
+  report_file_presence "$chrome autofill and form data (Web Data)" "$base/Web Data"
+  report_file_presence "$chrome saved logins (Login Data)" "$base/Login Data"
+done
 echo
 
 echo "### Where you have connected, and tool history"
@@ -145,3 +161,5 @@ echo
 echo "These stores are reported only. Nothing here is deleted by privacy-sweep."
 echo "Keyrings, SSH known_hosts, and cloud CLI folders are identity data;"
 echo "clear them yourself from the owning app if you want them gone."
+echo "Crash dumps can be removed with local-artifacts/clear-local.sh --clear-crash-dumps."
+echo "Timeshift snapshots are managed from Timeshift, which knows which ones to keep."

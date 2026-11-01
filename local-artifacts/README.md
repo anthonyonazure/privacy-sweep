@@ -36,6 +36,18 @@ Ordinary history that the owning app rebuilds has its own flags and is included 
 | `--clear-tool-history` (macOS, Linux) | `.viminfo`, `.lesshst`, and the Python, Node, MySQL, psql, and sqlite history files, plus `.zsh_sessions` and `.bash_sessions`. Shell history, `known_hosts`, and cloud CLI folders are left alone. |
 | `-ClearTypedPaths` (Windows) | Explorer address-bar paths, File Explorer search terms, the Win+R Run box, and the open/save dialog history. |
 | `-ClearRdpHistory` (Windows) | Remote Desktop recent servers, the saved-server settings, the screen bitmap cache, and `Default.rdp`. Connection files you saved yourself are not touched. |
+| `--clear-crash-dumps` (Linux, root) | Contents of `/var/crash` and `/var/lib/systemd/coredump`. These can hold a copy of process or kernel memory. They are written again only if something crashes. |
+
+One more clear is opt-in with a typed phrase and is **not** in `--all-opt-in`, because
+it deletes data that may exist nowhere else:
+
+| Flag | Phrase | What it clears |
+| --- | --- | --- |
+| `--clear-device-backups` (macOS), `-ClearDeviceBackups` (Windows) | `DELETE DEVICE BACKUPS` | Contents of the iPhone and iPad backup folder (`MobileSync\Backup`). Each backup is a full copy of a device, including messages and photos. If it is your only copy, it cannot be recovered. |
+
+Timeshift snapshots, the macOS login keychain, Windows Credential Manager files, and
+browser saved logins and autofill are reported by the audits and are not deleted here.
+Manage snapshots from Timeshift; manage passwords from the keychain or the browser.
 
 Windows Recall is not cleared by file deletion. Use Settings > Privacy & security >
 Recall & snapshots to delete snapshots or turn it off; the audit reports whether the

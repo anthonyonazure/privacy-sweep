@@ -251,6 +251,26 @@ Report-TextLines "SSH known_hosts (one line per host; names not printed)" (Join-
 Report-DirSummary "AWS CLI config folder (credentials not read)" (Join-Path $userRoot '.aws')
 Report-DirSummary "Azure CLI config folder (tokens not read)" (Join-Path $userRoot '.azure')
 Report-DirSummary "Docker config folder" (Join-Path $userRoot '.docker')
+Write-Host ""
+
+# ---------------------------------------------------------------------------
+Write-Host "### Phone backups, saved credentials, and browser form data"
+Write-Host "Backup contents, credential names, saved logins, and form entries are not read."
+Write-Host ""
+Report-DirSummary "iPhone and iPad backups (iTunes / Apple Devices, classic path)" (Join-Path $env:APPDATA 'Apple Computer\MobileSync\Backup')
+Report-DirSummary "iPhone and iPad backups (Microsoft Store app path)" (Join-Path $userRoot 'Apple\MobileSync\Backup')
+Report-DirSummary "Windows Credential Manager files (roaming)" (Join-Path $env:APPDATA 'Microsoft\Credentials')
+Report-DirSummary "Windows Credential Manager files (local)" (Join-Path $env:LOCALAPPDATA 'Microsoft\Credentials')
+foreach ($b in @(
+    @{ Name = 'Chrome'; Rel = 'Google\Chrome\User Data\Default' },
+    @{ Name = 'Edge';   Rel = 'Microsoft\Edge\User Data\Default' },
+    @{ Name = 'Brave';  Rel = 'BraveSoftware\Brave-Browser\User Data\Default' })) {
+    $profileDir = Join-Path $env:LOCALAPPDATA $b.Rel
+    if (-not (Test-Path -LiteralPath $profileDir)) { continue }
+    Report-File "$($b.Name) autofill and form data (Web Data)" (Join-Path $profileDir 'Web Data')
+    Report-File "$($b.Name) saved logins (Login Data)" (Join-Path $profileDir 'Login Data')
+}
+Write-Host ""
 
 Write-Host "These stores are reported only. Nothing here is deleted by privacy-sweep."
 Write-Host "Recall, typed paths, and RDP history can be cleared from Windows settings or the owning app."
